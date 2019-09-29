@@ -3,3 +3,4 @@ python-telegram-bot
 pandas
 beautifulsoup4
 requests
+PTable
