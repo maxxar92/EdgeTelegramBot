@@ -1,0 +1,4 @@
+{
+	"auth": "<Telegram Auth token>",
+	"chat_id": "<telegram chat id>"
+}
