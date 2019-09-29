@@ -42,7 +42,7 @@ def error(update, context):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
 
-@tl.job(interval=timedelta(seconds=5))
+@tl.job(interval=timedelta(seconds=60))
 def poll_explorer():
     new_hosts = scrape_new_hosts.poll_new_hosts(logger)
     if new_hosts is not None:
