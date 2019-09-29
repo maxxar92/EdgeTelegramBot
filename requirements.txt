@@ -2,4 +2,4 @@ timeloop
 python-telegram-bot
 pandas
 beautifulsoup4
-sqlite3
+requests
