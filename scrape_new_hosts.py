@@ -54,6 +54,11 @@ def get_new_hosts(scraped_hosts):
     read_hosts = pd.read_sql('select * from hosts', conn)
     return scraped_hosts[~scraped_hosts.device_id.isin(read_hosts.device_id)]
 
+def read_hosts_from_db():
+    conn = sqlite3.connect(HOST_DB)
+    read_hosts = pd.read_sql('select * from hosts', conn)
+    return read_hosts
+
 def write_hosts_to_db(hosts):
     conn = sqlite3.connect(HOST_DB)
     # write to db
