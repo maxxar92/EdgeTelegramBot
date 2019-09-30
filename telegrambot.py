@@ -66,11 +66,11 @@ def newHostMessage(host):
     # columns ["device_id", "host_name", "stargate", "location", "arch", "status"]
     print("hostname: ", host["host_name"])
     if host.location != "-":
-        return "Host *{host.host_name}* (arch: {host.arch}) has joined the network from {host.location} and its status is currently{host.status}".format(host=host)
+        return "Host *{host.host_name}* (arch: {host.arch}) has joined the network from {host.location} and its status is currently {host.status}".format(host=host)
     elif host.arch != "-":
-        return "Host *{host.host_name}* (arch: {host.arch}) has joined the network from an unknown location and its status is currently{host.status}".format(host=host)
+        return "Host *{host.host_name}* (arch: {host.arch}) has joined the network from an unknown location and its status is currently {host.status}".format(host=host)
     else:
-        return "Host *{host.host_name}* has joined the network from an unknown location and its status is currently{host.status}".format(host=host)
+        return "Host *{host.host_name}* has joined the network from an unknown location and its status is currently {host.status}".format(host=host)
 
 def get_stargate_hosts(update, context):
     if len(context.args) == 0:
