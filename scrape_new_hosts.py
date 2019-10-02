@@ -1,4 +1,5 @@
 import os
+import requests
 from requests import get
 from requests.adapters import HTTPAdapter
 from bs4 import BeautifulSoup
@@ -79,8 +80,8 @@ def update_hosts_db(scraped_hosts):
     scraped_hosts.to_sql('updatetable', conn, if_exists='replace')
     cur.execute("UPDATE hosts " + \
               "SET stargate = (SELECT stargate FROM updatetable WHERE hosts.device_id = updatetable.device_id ), " + \
-              "SET location = (SELECT location FROM updatetable WHERE hosts.device_id = updatetable.device_id ), " + \
-              "SET status = (SELECT status FROM updatetable WHERE hosts.device_id = updatetable.device_id ) " + \
+              "location = (SELECT location FROM updatetable WHERE hosts.device_id = updatetable.device_id ), " + \
+              "status = (SELECT status FROM updatetable WHERE hosts.device_id = updatetable.device_id ) " + \
               "WHERE device_id IN (SELECT device_id FROM updatetable);")
     conn.commit()
 
