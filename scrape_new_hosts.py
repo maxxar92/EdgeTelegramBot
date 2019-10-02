@@ -1,5 +1,6 @@
 import os
 from requests import get
+from requests.adapters import HTTPAdapter
 from bs4 import BeautifulSoup
 import pandas as pd
 import sqlite3
@@ -8,11 +9,21 @@ from sqlite3 import Error
 # don't split tables when printing
 pd.set_option('expand_frame_repr', False)
 
+
+# don't retry connection
+s = requests.Session()
+s.mount('https://', HTTPAdapter(max_retries=0))
+
+
 HOST_DB = "hosts.db"
 
 def poll_new_hosts(logger):
     if os.path.isfile(HOST_DB):
-        hosts_df = scrape_hosts_table()
+
+        try:
+            hosts_df = scrape_hosts_table()
+        except Exception as e:
+            logger.exception("[poll_new_hosts::scrape_hosts_table]", e)
         new_hosts = get_new_hosts(hosts_df)
 
         if not new_hosts.empty:
@@ -33,10 +44,11 @@ def poll_new_hosts(logger):
                 logger.info("Created new DB with host table: ")
                 logger.info(hosts_df)
         else:
+            update_hosts_db(hosts_df) # update all information in db (except pending status)
             pending_online = get_first_online_hosts(hosts_df)
             if not pending_online.empty:
                 logger.info("Following pending hosts have come online:\n"+str(pending_online))
-                set_pending_to_done(pending_online)
+                set_pending_to_done(pending_online) # online notification only once
                 return pending_online
 
     else:
@@ -60,6 +72,17 @@ def scrape_hosts_table():
         row = [tr.text.strip() for tr in td]
         host_list.append(row)
     return pd.DataFrame(host_list, columns=["device_id", "host_name", "stargate", "location", "arch", "status"])
+
+def update_hosts_db(scraped_hosts):
+    conn = sqlite3.connect(HOST_DB)
+    cur = conn.cursor()
+    scraped_hosts.to_sql('updatetable', conn, if_exists='replace')
+    cur.execute("UPDATE hosts " + \
+              "SET stargate = (SELECT stargate FROM updatetable WHERE hosts.device_id = updatetable.device_id ), " + \
+              "SET location = (SELECT location FROM updatetable WHERE hosts.device_id = updatetable.device_id ), " + \
+              "SET status = (SELECT status FROM updatetable WHERE hosts.device_id = updatetable.device_id ) " + \
+              "WHERE device_id IN (SELECT device_id FROM updatetable);")
+    conn.commit()
 
 
 def get_new_hosts(scraped_hosts):
