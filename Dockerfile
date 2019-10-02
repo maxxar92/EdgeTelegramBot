@@ -2,8 +2,10 @@ FROM python:3
 
 WORKDIR /home/edgenode
 
-ADD . .
+ADD ./requirements.txt .
 
 RUN pip install -r requirements.txt
+
+ADD . .
 
 CMD [ "python", "./telegrambot.py" ]
