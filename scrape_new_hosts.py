@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 from requests import get
 from requests.adapters import HTTPAdapter
@@ -9,18 +10,14 @@ from sqlite3 import Error
 
 # don't split tables when printing
 pd.set_option('expand_frame_repr', False)
-
-
 # don't retry connection
 s = requests.Session()
 s.mount('https://', HTTPAdapter(max_retries=0))
-
 
 HOST_DB = "hosts.db"
 
 def poll_new_hosts(logger):
     if os.path.isfile(HOST_DB):
-
         try:
             hosts_df = scrape_hosts_table()
         except Exception as e:
@@ -31,13 +28,16 @@ def poll_new_hosts(logger):
             # sanity check
             if new_hosts.shape[0] <= 5:
                 logger.info("Found new hosts: \n"+str(new_hosts))
-                online_hosts = new_hosts.loc[new_hosts.status == "Online"]
-                write_hosts_to_db(online_hosts)
-                
+
                 offline_hosts = new_hosts.loc[new_hosts.status != "Online"]
-                write_hosts_to_db(offline_hosts, online_notification="pending")
-                logger.info("Marked following hosts as pending. Notification will be sent once it comes online.\n"+str(offline_hosts))
-                return online_hosts
+                if not offline_hosts.empty:
+                    write_hosts_to_db(offline_hosts, online_notification="pending")
+                    logger.info("Marked following hosts as pending. Notification will be sent once it comes online.\n"+str(offline_hosts))
+                
+                online_hosts = new_hosts.loc[new_hosts.status == "Online"]
+                if not online_hosts.empty:
+                    write_hosts_to_db(online_hosts)
+                    return online_hosts
             else:
                 logger.warning("More than 5 new hosts detected. Probably the bot was down for a longer time. Recreating host table, not sending notifications.")
                 clear_db()
@@ -75,45 +75,53 @@ def scrape_hosts_table():
     return pd.DataFrame(host_list, columns=["device_id", "host_name", "stargate", "location", "arch", "status"])
 
 def update_hosts_db(scraped_hosts):
-    conn = sqlite3.connect(HOST_DB)
-    cur = conn.cursor()
+    conn, cur = get_db_conn()
     scraped_hosts.to_sql('updatetable', conn, if_exists='replace')
-    cur.execute("UPDATE hosts " + \
-              "SET stargate = (SELECT stargate FROM updatetable WHERE hosts.device_id = updatetable.device_id ), " + \
-              "location = (SELECT location FROM updatetable WHERE hosts.device_id = updatetable.device_id ), " + \
-              "status = (SELECT status FROM updatetable WHERE hosts.device_id = updatetable.device_id ) " + \
-              "WHERE device_id IN (SELECT device_id FROM updatetable);")
-    conn.commit()
-
+    with conn:
+        cur.execute("UPDATE hosts " + \
+                  "SET stargate = (SELECT stargate FROM updatetable WHERE hosts.device_id = updatetable.device_id ), " + \
+                  "location = (SELECT location FROM updatetable WHERE hosts.device_id = updatetable.device_id ), " + \
+                  "status = (SELECT status FROM updatetable WHERE hosts.device_id = updatetable.device_id ) " + \
+                  "WHERE device_id IN (SELECT device_id FROM updatetable);")
 
 def get_new_hosts(scraped_hosts):
-    conn = sqlite3.connect(HOST_DB)
+    conn, cur = get_db_conn()
     read_hosts = pd.read_sql('select * from hosts', conn)
     return scraped_hosts[~scraped_hosts.device_id.isin(read_hosts.device_id)]
 
 def get_first_online_hosts(scraped_hosts):
-    conn = sqlite3.connect(HOST_DB)
+    conn, cur = get_db_conn()
     read_hosts = pd.read_sql('select * from hosts', conn)#
     pending_notification_hosts = read_hosts.loc[read_hosts.online_notification == "pending"]
     pending_scraped = scraped_hosts[scraped_hosts.device_id.isin(pending_notification_hosts.device_id)]
     return pending_scraped.loc[pending_scraped.status == "Online"]
 
 def set_pending_to_done(update_hosts_df):
-    conn = sqlite3.connect(HOST_DB)
-    cur = conn.cursor()
-    update_hosts_df.to_sql('updatetable', conn, if_exists='replace')
-    cur.execute("UPDATE hosts " + \
-              "SET online_notification = 'done' " + \
-              "WHERE device_id IN (SELECT device_id FROM updatetable);")
-    conn.commit()
+    conn, cur = get_db_conn()
+    columns = [i[1] for i in cur.execute('PRAGMA table_info(hosts)')]
+
+    with conn:
+        update_hosts_df.to_sql('updatetable', conn, if_exists='replace')
+        cur.execute("UPDATE hosts " + \
+                  "SET online_notification = 'done' " + \
+                  "WHERE device_id IN (SELECT device_id FROM updatetable);")
+
+        # previous table versions did not contain this column
+        if 'first_online_timestamp' not in columns: 
+            cur.execute('ALTER TABLE hosts ADD COLUMN first_online_timestamp INTEGER')
+
+        timestamp = int(time.time())
+        cur.execute("UPDATE hosts " + \
+                  "SET first_online_timestamp = ? " + \
+                  "WHERE device_id IN (SELECT device_id FROM updatetable);", (timestamp,))
 
 def read_hosts_from_db():
-    conn = sqlite3.connect(HOST_DB)
+    conn, cur = get_db_conn()
     read_hosts = pd.read_sql('select * from hosts', conn)
     return read_hosts
 
 def write_hosts_to_db(hosts, online_notification="done"):
-    conn = sqlite3.connect(HOST_DB)
+    conn, cur = get_db_conn()
     notif_status_hosts = hosts.assign(online_notification=[online_notification]*hosts.shape[0])
     # write to db
     notif_status_hosts.to_sql(name='hosts', con=conn, if_exists="append")
@@ -121,32 +129,20 @@ def write_hosts_to_db(hosts, online_notification="done"):
 def fill_new_db(hosts_df=None):
     if hosts_df is None:
         hosts_df = scrape_hosts_table()
-    conn = sqlite3.connect(HOST_DB)
+    conn, cur = get_db_conn()
     notif_status_hosts = hosts_df.assign(online_notification=["done"]*hosts_df.shape[0])
+    notif_status_hosts = notif_status_hosts.assign(first_online_timestamp=[None]*hosts_df.shape[0])
     # write to db
     notif_status_hosts.to_sql(name='hosts', con=conn, if_exists="replace")
     return hosts_df
 
 def clear_db():
-    conn = sqlite3.connect(HOST_DB)
+    conn, cur = get_db_conn()
     sql = 'DELETE FROM hosts'
-    cur = conn.cursor()
     cur.execute(sql)
     conn.commit()
 
-
-def print_new_hosts():
-    hosts_df = scrape_hosts_table()
-    new_hosts = get_new_hosts(hosts_df)
-    if not new_hosts.empty:
-        print("new hosts:")
-        print(new_hosts)
-    else:
-        print("no new hosts")
-
-
-if __name__ == '__main__':
-    if os.path.isfile(HOST_DB):
-        print_new_hosts()
-    else:
-        fill_new_db()
+def get_db_conn():
+    conn = sqlite3.connect(HOST_DB)
+    cur = conn.cursor()
+    return conn, cur
