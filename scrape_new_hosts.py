@@ -108,7 +108,7 @@ def set_pending_to_done(update_hosts_df):
 
         # previous table versions did not contain this column
         if 'first_online_timestamp' not in columns: 
-            cur.execute('ALTER TABLE hosts ADD COLUMN first_online_timestamp INTEGER')
+            cur.execute('ALTER TABLE hosts ADD COLUMN first_online_timestamp INTEGER;')
 
         timestamp = int(time.time())
         cur.execute("UPDATE hosts " + \
