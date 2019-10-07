@@ -22,6 +22,7 @@ def poll_new_hosts(logger):
             hosts_df = scrape_hosts_table()
         except Exception as e:
             logger.exception("[poll_new_hosts::scrape_hosts_table]", e)
+            return
         new_hosts = get_new_hosts(hosts_df)
 
         if not new_hosts.empty:
