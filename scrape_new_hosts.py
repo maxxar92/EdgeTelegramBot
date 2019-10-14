@@ -30,12 +30,12 @@ def poll_new_hosts(logger):
             if new_hosts.shape[0] <= 5:
                 logger.info("Found new hosts: \n"+str(new_hosts))
 
-                offline_hosts = new_hosts.loc[new_hosts.status != "Online"]
+                offline_hosts = new_hosts.loc[(new_hosts.status == "Offline") | (new_hosts.status == "Status unknown")]
                 if not offline_hosts.empty:
                     write_hosts_to_db(offline_hosts, online_notification="pending")
                     logger.info("Marked following hosts as pending. Notification will be sent once it comes online.\n"+str(offline_hosts))
                 
-                online_hosts = new_hosts.loc[new_hosts.status == "Online"]
+                online_hosts = new_hosts.loc[(new_hosts.status != "Offline") & (new_hosts.status != "Status unknown")]
                 if not online_hosts.empty:
                     write_hosts_to_db(online_hosts)
                     return online_hosts
@@ -95,7 +95,7 @@ def get_first_online_hosts(scraped_hosts):
     read_hosts = pd.read_sql('select * from hosts', conn)#
     pending_notification_hosts = read_hosts.loc[read_hosts.online_notification == "pending"]
     pending_scraped = scraped_hosts[scraped_hosts.device_id.isin(pending_notification_hosts.device_id)]
-    return pending_scraped.loc[pending_scraped.status == "Online"]
+    return pending_scraped.loc[(pending_scraped.status != "Offline") & (pending_scraped.status != "Status unknown")]
 
 def set_pending_to_done(update_hosts_df):
     conn, cur = get_db_conn()
