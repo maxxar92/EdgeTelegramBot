@@ -6,8 +6,6 @@ __pycache__/
 # C extensions
 *.so
 
-*.db
-
 config.json
 config.json.bak
 
