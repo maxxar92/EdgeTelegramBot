@@ -1,4 +1,6 @@
-# Edge Telegram Bot 🤖
+# Edge Telegram Bot 🤖 
+
+<img src="https://github.com/maxxar92/EdgeTelegramBot/blob/master/edgebot_img.jpeg" width="200">
 
 This is a Bot for informing the Edge Telegram Community about activities in the [Edge network](https://edge.network/en/).
 As the edge API for querying nodes isn't published yet, this bot scrapes the [explorer](https://explorer.edge.network)  for changes periodically.
