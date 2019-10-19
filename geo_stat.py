@@ -89,7 +89,7 @@ def plot_geostat_update(timespan):
     hosts_df = host_scraper.read_hosts_from_db()
     hosts_df_timed = hosts_df[pd.notna(hosts_df["first_online_timestamp"])].copy() 
     hosts_df_timed["datetime"] = pd.to_datetime(hosts_df_timed.first_online_timestamp * 1e9)
-    start_day = pd.Timestamp.today().date() - pd.Timedelta(days=timespan)
+    start_day = pd.Timestamp.today() - pd.Timedelta(days=timespan)
     hosts_df_timed = hosts_df_timed.loc[hosts_df_timed.datetime >= start_day]
 
     fig, (ax_map,ax_linegraph) = plt.subplots(2, 1,figsize=(14, 14), gridspec_kw={'height_ratios': [6, 1],"hspace":-0.5})
