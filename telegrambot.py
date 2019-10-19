@@ -1,15 +1,15 @@
-
 import time
 from timeloop import Timeloop
 from datetime import timedelta
-
+from functools import wraps
 import json
 import logging
 import scrape_new_hosts as host_scraper
 import pandas
 from prettytable import PrettyTable
+import geo_stat
 
-from telegram import Bot, Update, ParseMode
+from telegram import Bot, Update, ParseMode, ChatAction
 from telegram.ext import  Dispatcher, Updater, CommandHandler
 
 # Enable logging
@@ -38,12 +38,9 @@ def start(update, context):
 
 def help(update, context):
     update.message.reply_text(
-        """This is a bot that will notify when new nodes are added to the network.
-         /stargate <stargate 3letter code> Shows hosts connected to this particular stargate. Available stargates are shown in https://explorer.edge.network/.""")
+        """This is a bot that will notify when new nodes are added to the network.\n/stargate <stargate 3letter code> \n   Shows hosts connected to this particular stargate. Available stargates are shown in https://explorer.edge.network/.""")
 
    
-
-
 def sendMessage(text):
     bot.send_message(chat_id=chat_id, text=text, parse_mode=ParseMode.MARKDOWN)
 
@@ -95,6 +92,36 @@ def get_stargate_hosts(update, context):
         out="```Hosts connected to {}\n{}```".format(query_stargate, str(x))
         update.message.reply_text(out, parse_mode=ParseMode.MARKDOWN)
 
+def send_action(action):
+    """Sends `action` while processing func command."""
+
+    def decorator(func):
+        @wraps(func)
+        def command_func(update, context, *args, **kwargs):
+            context.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=action)
+            return func(update, context,  *args, **kwargs)
+        return command_func
+    
+    return decorator
+    
+@send_action(ChatAction.TYPING)
+def get_added_stats(update, context):
+    timeframe = 14
+    if len(context.args) != 0:
+        try:
+            timeframe = int(context.args[0].strip())
+        except ValueError:
+            update.message.reply_text("Error. The number of days supplied must be a integer number.")
+            return
+    logger.info('Added host stats request: {} '.format(update.message.text))
+    try:
+        stat_img_filename = geo_stat.plot_geostat_update(timeframe)
+    except Exception as e:
+        logger.exception(e)
+        update.message.reply_text("An error occured: {}".format(e))
+        return
+
+    update.message.reply_photo(photo=open(stat_img_filename, 'rb'))
 
 
 def main():
@@ -111,6 +138,7 @@ def main():
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("stargate", get_stargate_hosts))
+    dp.add_handler(CommandHandler("added", get_added_stats))
 
     # log all errors
     dp.add_error_handler(error)

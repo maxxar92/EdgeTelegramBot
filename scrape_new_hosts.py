@@ -17,11 +17,13 @@ s.mount('https://', HTTPAdapter(max_retries=0))
 HOST_DB = "hosts.db"
 
 def poll_new_hosts(logger):
+    from geo_stat import fill_location_lookup_db, cache_new_locations
     if os.path.isfile(HOST_DB):
         try:
             hosts_df = scrape_hosts_table()
         except Exception as e:
-            logger.exception("[poll_new_hosts::scrape_hosts_table]", e)
+            logger.error("Error in poll_new_hosts.scrape_hosts_table:")
+            logger.exception(e)
             return
         new_hosts = get_new_hosts(hosts_df)
 
@@ -38,6 +40,11 @@ def poll_new_hosts(logger):
                 online_hosts = new_hosts.loc[(new_hosts.status != "Offline") & (new_hosts.status != "Status unknown")]
                 if not online_hosts.empty:
                     write_hosts_to_db(online_hosts)
+                    try:
+                        cache_new_locations(online_hosts, logger)
+                    except Exception as e:
+                        logger.error(e)
+
                     return online_hosts
             else:
                 logger.warning("More than 5 new hosts detected. Probably the bot was down for a longer time. Recreating host table, not sending notifications.")
@@ -51,11 +58,17 @@ def poll_new_hosts(logger):
             if not pending_online.empty:
                 logger.info("Following pending hosts have come online:\n"+str(pending_online))
                 set_pending_to_done(pending_online) # online notification only once
+                try:
+                    cache_new_locations(pending_online, logger)
+                except Exception as e:
+                    logger.error(e)
+                        
                 return pending_online
 
     else:
         hosts_df = fill_new_db()
         logger.info("Created new DB with host table: \n"+  str(hosts_df))
+        cache_new_locations(hosts_df, logger)
     
     return None
 

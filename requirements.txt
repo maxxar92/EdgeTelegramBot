@@ -4,3 +4,7 @@ pandas
 beautifulsoup4
 requests
 PTable
+matplotlib
+geopandas
+geopy
+descartes
