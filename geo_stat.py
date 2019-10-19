@@ -30,7 +30,6 @@ def geocode_locations(locations, logger, use_mapbox=True):
         except Exception as e:
             logger.error(u"geocode processing failed with {}".format(e))
             return None
-        
         if result is None:
             logger.warning(u"geocode could not find {} {}. None is used.".format(city, countrycode))
         return result
@@ -73,8 +72,9 @@ def cache_new_locations(new_hosts_df, logger):
     cached_locations = pd.read_sql('select * from map_locations', conn)
 
     new_locations = locations[~locations.isin(cached_locations.explorer_location)]
+    if new_locations.empty:
+        return
     loc_df = geocode_locations(new_locations, logger)
-    
     with conn:
         loc_df.to_sql(name='map_locations', con=conn, if_exists="append")
 
