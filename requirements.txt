@@ -8,3 +8,4 @@ matplotlib
 geopandas
 geopy
 descartes
+pillow

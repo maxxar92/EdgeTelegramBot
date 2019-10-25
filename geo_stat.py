@@ -1,5 +1,7 @@
 import time
 import logging
+from PIL import Image
+import numpy as np
 import pandas as pd
 import geopandas
 import geopy
@@ -7,7 +9,9 @@ from geopy.geocoders import Nominatim, MapBox
 from geopy.extra.rate_limiter import RateLimiter
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import scrape_new_hosts as host_scraper
+
 
 plt.rcParams["font.size"] = 14
 
@@ -84,6 +88,23 @@ def retrieve_cached_locations():
     cached_locations = pd.read_sql('select * from map_locations', conn)
     return cached_locations
 
+
+def get_flag(name,img_length=32):
+    path = "flags/{}.png".format(name.lower())
+    img = Image.open(path).convert('RGB')
+    img_height = int(img_length * 1.0 / img.size[0] * img.size[1])
+    img = img.resize((img_length, img_height), Image.ANTIALIAS)
+    return np.asarray(img)
+
+def offset_image(dt, ycoord, name, ax, yoffset=16):
+    img = get_flag(name)
+    im = OffsetImage(img, zoom=0.72)
+    im.image.axes = ax
+
+    ab = AnnotationBbox(im, (dt, ycoord),  xybox=(0., yoffset), frameon=True,
+                        xycoords='data',  boxcoords="offset points", pad=0)
+
+    ax.add_artist(ab)
 
 def plot_geostat_update(timespan):
     hosts_df = host_scraper.read_hosts_from_db()
