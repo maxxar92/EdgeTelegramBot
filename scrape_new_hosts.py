@@ -30,28 +30,24 @@ def poll_new_hosts(logger):
         if not new_hosts.empty:
             # sanity check
             if new_hosts.shape[0] <= 5:
-                logger.info("Found new hosts: \n"+str(new_hosts))
+                logger.warning("More than 5 new hosts detected. Probably the bot was down for a longer time. ")
+            logger.info("Found new hosts: \n"+str(new_hosts))
 
-                offline_hosts = new_hosts.loc[(new_hosts.status == "Offline") | (new_hosts.status == "Status unknown")]
-                if not offline_hosts.empty:
-                    write_hosts_to_db(offline_hosts, online_notification="pending")
-                    logger.info("Marked following hosts as pending. Notification will be sent once it comes online.\n"+str(offline_hosts))
-                
-                online_hosts = new_hosts.loc[(new_hosts.status != "Offline") & (new_hosts.status != "Status unknown")]
-                if not online_hosts.empty:
-                    write_hosts_to_db(online_hosts)
-                    try:
-                        cache_new_locations(online_hosts, logger)
-                    except Exception as e:
-                        logger.error(e)
+            offline_hosts = new_hosts.loc[(new_hosts.status == "Offline") | (new_hosts.status == "Status unknown")]
+            if not offline_hosts.empty:
+                write_hosts_to_db(offline_hosts, online_notification="pending")
+                logger.info("Marked following hosts as pending. Notification will be sent once it comes online.\n"+str(offline_hosts))
+            
+            online_hosts = new_hosts.loc[(new_hosts.status != "Offline") & (new_hosts.status != "Status unknown")]
+            if not online_hosts.empty:
+                write_hosts_to_db(online_hosts)
+                set_pending_to_done(online_hosts) # add timestamp
+                try:
+                    cache_new_locations(online_hosts, logger)
+                except Exception as e:
+                    logger.error(e)
 
-                    return online_hosts
-            else:
-                logger.warning("More than 5 new hosts detected. Probably the bot was down for a longer time. Recreating host table, not sending notifications.")
-                clear_db()
-                fill_new_db(hosts_df)
-                logger.info("Created new DB with host table: ")
-                logger.info(hosts_df)
+                return online_hosts
         else:
             update_hosts_db(hosts_df) # update all information in db (except pending status)
             pending_online = get_first_online_hosts(hosts_df)
