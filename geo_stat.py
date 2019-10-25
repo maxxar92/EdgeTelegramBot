@@ -92,7 +92,7 @@ def plot_geostat_update(timespan):
     start_day = pd.Timestamp.today() - pd.Timedelta(days=timespan)
     hosts_df_timed = hosts_df_timed.loc[hosts_df_timed.datetime >= start_day]
 
-    fig, (ax_map,ax_linegraph) = plt.subplots(2, 1,figsize=(14, 14), gridspec_kw={'height_ratios': [6, 1],"hspace":-0.5})
+    fig, (ax_map,ax_linegraph) = plt.subplots(2, 1,figsize=(16, 16), gridspec_kw={'height_ratios': [6, 1],"hspace":-0.5})
     ax_map.axis('off')
     ax_map.set_title("New host locations (last {} days)".format(timespan))
     world = geopandas.read_file(geopandas.datasets.get_path('naturalearth_lowres'))
@@ -116,14 +116,29 @@ def plot_geostat_update(timespan):
          'Longitude': merged_df.longitude
     })
 
-    gdf = geopandas.GeoDataFrame(
-        geo_df_data, geometry=geopandas.points_from_xy(geo_df_data.Longitude, geo_df_data.Latitude))
-    gdf.plot(ax=ax_map, color='red',marker=7,markersize=50,edgecolor="black")
+    for n in range(100):
+        n_count_nodes = geo_df_data.groupby('City').filter(lambda x: len(x) == n)
+        if not n_count_nodes.empty:    
+            gdf = geopandas.GeoDataFrame(n_count_nodes, 
+                geometry=geopandas.points_from_xy(n_count_nodes.Longitude, n_count_nodes.Latitude))    
+            gdf.plot(ax=ax_map, color='red',marker=".",markersize=80,edgecolor="black")
+            if n>1:
+                # shift up marker slightly to align to center
+                gdf_shifted1 = geopandas.GeoDataFrame(n_count_nodes.copy(), 
+                    geometry=geopandas.points_from_xy(n_count_nodes.Longitude, n_count_nodes.Latitude+1.9))
+                gdf_shifted1.plot(ax=ax_map, color='red',marker="v",markersize=60,edgecolor="black")
+                # plot number of nodes in this city
+                gdf_shifted2 = geopandas.GeoDataFrame(n_count_nodes.copy(), 
+                    geometry=geopandas.points_from_xy(n_count_nodes.Longitude, n_count_nodes.Latitude+6.2))
+                gdf_shifted2.plot(ax=ax_map, color='black',marker="${}$".format(n),markersize=100)
+
 
     hosts_unknown_locs = hosts_df_timed[~hosts_df_timed.host_name.isin(hosts_df_timed_known_loc.host_name)]
     if not hosts_unknown_locs.empty:
-        ax_map.text(-45,-50,"Hosts with unknown locations: {}".format(hosts_unknown_locs.shape[0]))
-
+        stargate_txt = ""
+        for stargate, count in hosts_unknown_locs.groupby("stargate")["stargate"].count().iteritems():
+            stargate_txt += "{}={}, ".format(stargate, count)
+        ax_map.text(-45,-50,"Hosts with unknown locations, \nper stargate: {}".format(stargate_txt[:-2]))
 
     ax_linegraph.yaxis.set_major_locator(MaxNLocator(integer=True))
     counts = hosts_df_timed.groupby([hosts_df_timed.datetime.dt.date])["datetime"].count()
@@ -131,7 +146,18 @@ def plot_geostat_update(timespan):
     counts = counts.reindex(r).fillna(0.0) #fill dates without new hosts
     ax_linegraph.set_title("New hosts online - per day")
     ax_linegraph.set_ylabel("Hosts")
-    counts.plot(ax=ax_linegraph,linestyle='--', marker='o',color="red")
+    counts.plot(ax=ax_linegraph,linestyle='--', marker='o',color="red",markersize=10)
+
+    date_time_grouped = hosts_df_timed_known_loc.groupby([hosts_df_timed.datetime.dt.date])
+    for dt, df in date_time_grouped:
+        country_coded_df = df.copy()
+        country_coded_df["countrycode"] = [loc.split(",")[1].strip() for loc in df.location]
+        unique_countries = country_coded_df.drop_duplicates(subset='countrycode', keep="first")["countrycode"]
+        for i, country in enumerate(unique_countries.tolist()):
+            if counts[dt] >= max(counts) * 0.75:
+                offset_image(dt, counts[dt]-i, country, ax_linegraph,yoffset=-20)
+            else:
+                offset_image(dt, counts[dt]+i, country, ax_linegraph)
     out_filename = "added_nodes.png"
     fig.savefig(out_filename,dpi=200,bbox_inches="tight")
 
