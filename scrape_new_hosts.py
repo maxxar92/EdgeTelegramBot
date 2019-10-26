@@ -68,10 +68,13 @@ def poll_new_hosts(logger):
     
     return None
 
-def scrape_hosts_table():
+def scrape_hosts_table(update_stargates=True):
     url = 'https://explorer.edge.network/'
     response = get(url)
     html_soup = BeautifulSoup(response.text, 'html.parser')
+
+    if update_stargates:
+        update_stargate_info(html_soup)
 
     hosts_header_div = html_soup.find("div", id="hosts")
     host_table = hosts_header_div.find("table")
@@ -83,6 +86,22 @@ def scrape_hosts_table():
         row = [tr.text.strip() for tr in td]
         host_list.append(row)
     return pd.DataFrame(host_list, columns=["device_id", "host_name", "stargate", "location", "arch", "status"])
+
+def update_stargate_info(html_soup):
+    hosts_header_div = html_soup.find("div", id="stargates")
+    host_table = hosts_header_div.find("table")
+    #find all rows and exclude header
+    host_rows = host_table.find_all("tr")[1:] 
+    host_list = []
+    for tr in host_rows:
+        td = tr.find_all('td')
+        row = [tr.text.strip() for tr in td]
+        host_list.append(row)
+    stargates = pd.DataFrame(host_list, columns=["device_id", "stargate_name", "location", "arch", "status"])
+
+    conn, cur = get_db_conn()
+    stargates.to_sql(name='stargates', con=conn, if_exists="replace")
+
 
 def update_hosts_db(scraped_hosts):
     conn, cur = get_db_conn()
@@ -128,6 +147,12 @@ def set_pending_to_done(update_hosts_df):
 def read_hosts_from_db():
     conn, cur = get_db_conn()
     read_hosts = pd.read_sql('select * from hosts', conn)
+    return read_hosts
+
+
+def read_stargates_from_db():
+    conn, cur = get_db_conn()
+    read_hosts = pd.read_sql('select * from stargates', conn)
     return read_hosts
 
 def write_hosts_to_db(hosts, online_notification="done"):

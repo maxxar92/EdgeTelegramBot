@@ -184,6 +184,57 @@ def plot_geostat_update(timespan):
 
     return out_filename
 
+def offset_image_barchart(coord, name, ax):
+    img = get_flag(name, img_length=32)
+    im = OffsetImage(img, zoom=0.72)
+    im.image.axes = ax
+    ab = AnnotationBbox(im, (coord, 0),  xybox=(0., -16.), frameon=False,
+                        xycoords='data',  boxcoords="offset points", pad=0)
+    ax.add_artist(ab)
+
+def plot_country_stat():
+    hosts_df = host_scraper.read_hosts_from_db()
+    loc_df = retrieve_cached_locations()
+    hosts_df_known_loc = hosts_df.loc[(hosts_df.location!="-")].copy()
+    hosts_df_known_loc["countrycode"] = [loc.split(",")[1].strip() for loc in hosts_df_known_loc.location]
+    country_counts = hosts_df_known_loc.groupby('countrycode')["countrycode"].count().sort_values(ascending=False)
+        
+    fig, (ax, ax_rest) = plt.subplots(2,1, figsize=(16, 8), gridspec_kw={"hspace":0.3})
+    ax.bar(range(len(country_counts)), country_counts, width=0.8,align="center")
+    ax.set_xticks(range(len(country_counts)))
+    ax.set_xticklabels(country_counts.index)
+    ax.tick_params(axis='x', which='major', pad=26)
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+    ax.set_xlim(-0.5,len(country_counts)-.5)
+    ax.set_title("Online hosts per country")
+    for idx, (country, count) in enumerate(country_counts.iteritems()):
+        offset_image_barchart(idx, country, ax)
+        
+
+    hosts_df_unknown_loc = hosts_df.loc[(hosts_df.location=="-") & 
+                                        (hosts_df.status != "Offline") & 
+                                        (hosts_df.status != "Status unknown")]
+    unknown_hosts_per_stargate = hosts_df_unknown_loc.groupby("stargate")["stargate"].count()
+
+    hosts_df_offline =  hosts_df.loc[hosts_df.status == "Offline"]
+    hosts_df_unknown_stat =  hosts_df.loc[hosts_df.status == "Status unknown"]
+
+    labels = unknown_hosts_per_stargate.index.tolist() + ["Status unknown", "Offline"]
+    merged_stats = unknown_hosts_per_stargate.copy()
+    merged_stats.at[len(labels)-2] = hosts_df_unknown_stat.shape[0]
+    merged_stats.at[len(labels)-1] = hosts_df_offline.shape[0]
+
+    ax_rest.bar(range(len(labels)), merged_stats, width=0.4,align="center")
+    ax_rest.set_xticks(range(len(labels)))
+    ax_rest.set_xticklabels(labels)
+    ax_rest.axvline(x=unknown_hosts_per_stargate.shape[0]-0.5,linestyle='dashed')
+    ax_rest.text(0.5,max(merged_stats)/1.1, "Online hosts with unknown locations, per stargate",  fontsize=18)
+    out_filename = "country_stats.png"
+    fig.savefig(out_filename,dpi=200,bbox_inches="tight")
+
+    return out_filename
+
+
 
 if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',

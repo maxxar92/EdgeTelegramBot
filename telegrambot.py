@@ -123,6 +123,18 @@ def get_added_stats(update, context):
 
     update.message.reply_photo(photo=open(stat_img_filename, 'rb'))
 
+@send_action(ChatAction.TYPING)
+def get_host_stats(update, context):
+    try:
+        stat_img_filename = geo_stat.plot_country_stat()
+    except Exception as e:
+        logger.exception(e)
+        update.message.reply_text("An error occured: {}".format(e))
+        return
+
+    update.message.reply_photo(photo=open(stat_img_filename, 'rb'))
+    
+
 
 def main():
     """Run bot."""
@@ -139,6 +151,7 @@ def main():
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("stargate", get_stargate_hosts))
     dp.add_handler(CommandHandler("added", get_added_stats))
+    dp.add_handler(CommandHandler("hosts", get_host_stats))
 
     # log all errors
     dp.add_error_handler(error)
