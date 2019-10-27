@@ -6,7 +6,9 @@ This is a Bot for informing the Edge Telegram Community about activities in the 
 As the edge API for querying nodes isn't published yet, this bot scrapes the [explorer](https://explorer.edge.network)  for changes periodically.
 
 #### Commands
-/stargate <3-letter stargate>  Displays all hosts connected to the queried stargate
+- /stargate <3-letter stargate> - Displays all hosts connected to the queried stargate
+- /added \<days\> - Show statistics added hosts in last \<days\>.
+-  /hosts - Show per-country statistics of current hosts
 
 #### Notifications
 When a new node first comes online, a notification will be sent to the registered channel (currently the trading channel)

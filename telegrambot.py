@@ -38,8 +38,12 @@ def start(update, context):
 
 def help(update, context):
     update.message.reply_text(
-        """This is a bot that will notify when new nodes are added to the network.\nCommands:\n/stargate <stargate 3letter code> \nShows hosts connected to this particular stargate. Available stargates are shown in https://explorer.edge.network/.""")
+        """This is a bot that will notify when new nodes are added to the network.
 
+Commands:
+/stargate <stargate> - Show hosts connected to this stargate.
+/added <days> - Show statistics added hosts in last <days>.
+/hosts - Show per-country statistics of current hosts.""", parse_mode=ParseMode.MARKDOWN)
    
 def sendMessage(text):
     bot.send_message(chat_id=chat_id, text=text, parse_mode=ParseMode.MARKDOWN)
