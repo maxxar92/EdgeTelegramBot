@@ -28,14 +28,14 @@ def geocode_locations(locations, logger, use_mapbox=True):
         logger.info(u"geocode processing {} {}".format(city, countrycode))
         try:
             if use_mapbox:
-                result = geocode(unicode(city), country=countrycode)
+                result = geocode(city, country=countrycode)
             else:
                 result = geocode({"city":city}, country_codes=countrycode)
         except Exception as e:
-            logger.error(u"geocode processing failed with {}".format(e))
+            logger.error("geocode processing failed with {}".format(e))
             return None
         if result is None:
-            logger.warning(u"geocode could not find {} {}. None is used.".format(city, countrycode))
+            logger.warning("geocode could not find {} {}. None is used.".format(city, countrycode))
         return result
 
     decoded_location = locations.apply(lookup)
