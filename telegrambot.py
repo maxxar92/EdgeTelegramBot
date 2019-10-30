@@ -122,8 +122,8 @@ def get_added_stats(update, context):
             return
     logger.info('Added host stats request: {} '.format(update.message.text))
     try:
-        out_filename = "added_nodes.png"
-        stat_img_filename = geo_stat.plot_geostat_update(timeframe)
+        stat_img_filename = "added_nodes.png"
+        fig = geo_stat.plot_geostat_update(stat_img_filename, timeframe)
     except Exception as e:
         logger.exception(e)
         update.message.reply_text("An error occured: {}".format(e))
