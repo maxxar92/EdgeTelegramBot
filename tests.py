@@ -5,6 +5,7 @@ import pandas as pd
 import scrape_new_hosts as scraper
 import logging
 from datetime import datetime
+import geo_stat
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -12,7 +13,6 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-scraper.HOST_DB = "test_hosts.db"
 
 
 current_mock_scrape_data = {}
@@ -30,6 +30,7 @@ def append_entry(device_id, host_name, location, stargate, arch, status):
 class TestCreateDB(unittest.TestCase):
 
     def setUp(self):
+        scraper.HOST_DB = "test_hosts.db"
         current_mock_scrape_data["device_id"] = ["id-1", "id-2"]
         current_mock_scrape_data["host_name"] = ["test-host1", "test-host2"]
         current_mock_scrape_data["location"] = ["Miami", "-"]
@@ -84,6 +85,20 @@ class TestCreateDB(unittest.TestCase):
         assert datetime.fromtimestamp(float(timestamp)).year >= 2019
 
 
+class TestPlottingRealData(unittest.TestCase):
+    def setUp(self):
+        scraper.HOST_DB = "testdata/hosts_snapshot_30_10.db"
+
+
+    def testAddedPlot(self):
+        db_hosts = scraper.read_hosts_from_db()
+
+        timespans = list(range(1,10)) + [11,15,17,20,25,30,41]
+        for timespan in timespans:
+            print("testing plot with timespan: {}".format(timespan))
+            testout_filename =  "testout/out_added_nodes_{}.png".format(timespan)
+            fig = geo_stat.plot_geostat_update(testout_filename, timespan)
+            fig.savefig(testout_filename, dpi=200,bbox_inches="tight")
 
 
 

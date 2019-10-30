@@ -114,11 +114,15 @@ def get_added_stats(update, context):
     if len(context.args) != 0:
         try:
             timeframe = int(context.args[0].strip())
+            if timeframe < 1:
+                update.message.reply_text("Error. Timeframe must be >= 0")
+                return
         except ValueError:
             update.message.reply_text("Error. The number of days supplied must be a integer number.")
             return
     logger.info('Added host stats request: {} '.format(update.message.text))
     try:
+        out_filename = "added_nodes.png"
         stat_img_filename = geo_stat.plot_geostat_update(timeframe)
     except Exception as e:
         logger.exception(e)

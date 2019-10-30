@@ -106,7 +106,7 @@ def offset_image(dt, ycoord, name, ax, yoffset=16):
 
     ax.add_artist(ab)
 
-def plot_geostat_update(timespan):
+def plot_geostat_update(out_filename, timespan):
     hosts_df = host_scraper.read_hosts_from_db()
     hosts_df_timed = hosts_df[pd.notna(hosts_df["first_online_timestamp"])].copy() 
     hosts_df_timed["datetime"] = pd.to_datetime(hosts_df_timed.first_online_timestamp * 1e9)
@@ -170,19 +170,20 @@ def plot_geostat_update(timespan):
     counts.plot(ax=ax_linegraph,linestyle='--', marker='o',color="red",markersize=10)
 
     date_time_grouped = hosts_df_timed_known_loc.groupby([hosts_df_timed.datetime.dt.date])
-    for dt, df in date_time_grouped:
+    for dt in r:
+        df = hosts_df_timed_known_loc.loc[hosts_df_timed.datetime.dt.date == dt.date()]
         country_coded_df = df.copy()
         country_coded_df["countrycode"] = [loc.split(",")[1].strip() for loc in df.location]
         unique_countries = country_coded_df.drop_duplicates(subset='countrycode', keep="first")["countrycode"]
         for i, country in enumerate(unique_countries.tolist()):
+            offset = i*(max(counts)/10.0 + max(counts)/50.0)
             if counts[dt] >= max(counts) * 0.75:
-                offset_image(dt, counts[dt]-i, country, ax_linegraph,yoffset=-20)
+                offset_image(dt, counts[dt]-offset, country, ax_linegraph,yoffset=-20)
             else:
-                offset_image(dt, counts[dt]+i, country, ax_linegraph)
-    out_filename = "added_nodes.png"
-    fig.savefig(out_filename,dpi=200,bbox_inches="tight")
+                offset_image(dt, counts[dt]+offset, country, ax_linegraph)
+    fig.savefig(out_filename, dpi=200,bbox_inches="tight")
 
-    return out_filename
+    return fig
 
 def offset_image_barchart(coord, name, ax):
     img = get_flag(name, img_length=32)
