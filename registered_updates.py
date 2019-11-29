@@ -8,7 +8,7 @@ from telegram import ParseMode
 CLIENT_DB = "registeredClients.db"
 app = Flask(__name__)
 
-@app.route('/api/update/<token>', methods=['GET', 'POST'])
+@app.route('/api/update/<token>', methods=['POST'])
 def update(token):
     try:
         content = request.get_json(silent=True)
@@ -55,12 +55,12 @@ class UserUpdates(object):
 
     def send_update_message(self, device_token, msg):
         chat_id = self.get_telegram_id(device_token)
-        self.bot.send_message(chat_id=chat_id, text=msg, parse_mode=ParseMode.MARKDOWN)
+        if chat_id is not None:
+            self.bot.send_message(chat_id=chat_id, text=msg, parse_mode=ParseMode.MARKDOWN)
 
 
     def start_api_server(self, bot):
         self.bot = bot
         threading.Thread(target=flaskthread).start()
-        print("ok")
 
 user_updater = UserUpdates()

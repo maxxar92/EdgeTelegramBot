@@ -1,4 +1,5 @@
 docker cp edgenodebot:/home/edgenode/hosts.db .
+docker cp edgenodebot:/home/edgenode/registeredClients.db .
 docker build -t edgenodebot .
 docker stop edgenodebot
 docker rm edgenodebot
