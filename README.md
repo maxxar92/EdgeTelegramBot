@@ -8,7 +8,8 @@ As the edge API for querying nodes isn't published yet, this bot scrapes the [ex
 #### Commands
 - /stargate <3-letter stargate> - Displays all hosts connected to the queried stargate
 - /added \<days\> - Show statistics added hosts in last \<days\>.
--  /hosts - Show per-country statistics of current hosts
+- /hosts - Show per-country statistics of current hosts
+- /register <10 number registry id> - Registers a device for [check-edge](https://github.com/befranz/check-edge) failure reports, check the link for setup guidelines.
 
 #### Notifications
 When a new node first comes online, a notification will be sent to the registered channel (currently the trading channel)
