@@ -35,6 +35,7 @@ def host_status(device_uuid):
         hosts = host_scraper.read_hosts_from_db()
         retrieved_host = hosts.loc[hosts.device_id == device_uuid]
         if retrieved_host.empty:
+            logger.exception("UUID was not found.")
             return abort(500, "UUID was not found.")
         
         status = retrieved_host.status.iloc[0]
@@ -45,7 +46,7 @@ def host_status(device_uuid):
             return "online"
 
         nominator, timescale, _ = status.split(" ")
-        multiplicators = {"min": 1, "hour": 60, "day": 60 * 24, "week": 60*24*7, "month": 60*24*30}
+        multiplicators = {"minute": 1, "hour": 60, "day": 60 * 24, "week": 60*24*7, "month": 60*24*30}
         if timescale.endswith("s"):
             timescale = timescale[:-1] #remove s from hours, weeks, etc.
 
