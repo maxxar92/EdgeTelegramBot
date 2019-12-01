@@ -7,7 +7,7 @@ import logging
 import scrape_new_hosts as host_scraper
 import pandas
 from prettytable import PrettyTable
-import stat
+import staking
 import geo_stat
 from registered_updates import user_updater
 
@@ -190,7 +190,7 @@ def unregister_from_update(update, context):
 def get_staked(update, context):
     try:
         stat_img_filename = "staked.png"
-        stat.plot_staked(stat_img_filename)
+        staking.plot_staked(stat_img_filename)
     except Exception as e:
         logger.exception(e)
         update.message.reply_text("An error occured: {}".format(e))
