@@ -97,8 +97,7 @@ class TestPlottingRealData(unittest.TestCase):
         for timespan in timespans:
             print("testing plot with timespan: {}".format(timespan))
             testout_filename =  "testout/out_added_nodes_{}.png".format(timespan)
-            fig = geo_stat.plot_geostat_update(testout_filename, timespan)
-            fig.savefig(testout_filename, dpi=200,bbox_inches="tight")
+            geo_stat.plot_geostat_update(testout_filename, timespan)
 
 
 

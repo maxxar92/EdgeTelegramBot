@@ -182,8 +182,7 @@ def plot_geostat_update(out_filename, timespan):
             else:
                 offset_image(dt, counts[dt]+offset, country, ax_linegraph)
     fig.savefig(out_filename, dpi=200,bbox_inches="tight")
-
-    return fig
+    fig.close()
 
 def offset_image_barchart(coord, name, ax):
     img = get_flag(name, img_length=32)
@@ -193,7 +192,7 @@ def offset_image_barchart(coord, name, ax):
                         xycoords='data',  boxcoords="offset points", pad=0)
     ax.add_artist(ab)
 
-def plot_country_stat():
+def plot_country_stat(out_filename):
     hosts_df = host_scraper.read_hosts_from_db()
     loc_df = retrieve_cached_locations()
     hosts_df_known_loc = hosts_df.loc[(hosts_df.location!="-")].copy()
@@ -230,11 +229,8 @@ def plot_country_stat():
     ax_rest.set_xticklabels(labels)
     ax_rest.axvline(x=unknown_hosts_per_stargate.shape[0]-0.5,linestyle='dashed')
     ax_rest.text(0.5,max(merged_stats)/1.1, "Online hosts with unknown locations, per stargate",  fontsize=18)
-    out_filename = "country_stats.png"
     fig.savefig(out_filename,dpi=200,bbox_inches="tight")
-
-    return out_filename
-
+    fig.close()
 
 
 if __name__ == '__main__':

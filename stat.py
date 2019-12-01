@@ -34,7 +34,7 @@ def get_stakes():
 
 	return total_staked, hosts_staked, stargates_staked
 
-def plot_stakes():
+def plot_staked(out_filename):
 	total_supply = 100e6
 	total_staked, host_stake, stargate_stake = get_stakes()
 
@@ -43,11 +43,10 @@ def plot_stakes():
 	sizes = [total_supply-total_staked, stargate_stake, host_stake]
 	explode = (0, 0.1, 0.1) 
 
-	fig1, ax1 = plt.subplots()
-	ax1.pie(sizes, explode=explode, labels=labels, autopct='%1.1f%%',
+	fig, ax = plt.subplots()
+	ax.pie(sizes, explode=explode, labels=labels, autopct='%1.1f%%',
 	        shadow=False, startangle=0)
-	ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+	ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
 
-	plt.show()
-
-plot_stakes()
+	fig.savefig(out_filename,dpi=200,bbox_inches="tight")
+	fig.close()
