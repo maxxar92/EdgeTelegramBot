@@ -6,9 +6,16 @@ import threading
 from telegram import ParseMode
 import scrape_new_hosts as host_scraper
 import traceback
+import logging
 
 CLIENT_DB = "registeredClients.db"
 app = Flask(__name__)
+
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
+
+logger = logging.getLogger(__name__)
+
 
 @app.route('/api/update/<token>', methods=['POST'])
 def update(token):
@@ -17,6 +24,7 @@ def update(token):
         msg = content["update_message"]
         user_updater.send_update_message(token, msg)
     except Exception as e:
+        logger.exception(e)
         abort(500, e)
     
     return "ok"
@@ -37,7 +45,6 @@ def host_status(device_uuid):
             return "online"
 
         nominator, timescale, _ = status.split(" ")
-        print(nominator, timescale)
         multiplicators = {"min": 1, "hour": 60, "day": 60 * 24, "week": 60*24*7, "month": 60*24*30}
         if timescale.endswith("s"):
             timescale = timescale[:-1] #remove s from hours, weeks, etc.
@@ -46,6 +53,7 @@ def host_status(device_uuid):
         return "minutes_offline={}".format(minutes_offline)
 
     except Exception as e:
+        logger.exception(e)
         return abort(500, traceback.format_exc())
     
 
