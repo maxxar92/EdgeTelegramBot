@@ -10,3 +10,4 @@ geopy
 descartes
 pillow
 flask
+py-etherscan-api
