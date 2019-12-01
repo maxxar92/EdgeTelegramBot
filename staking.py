@@ -1,14 +1,20 @@
 from etherscan.accounts import Account
 import json
 import matplotlib.pyplot as plt
+import logging
+
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
+
+logger = logging.getLogger(__name__)
 
 def get_stakes():
 	with open('config.json') as config_file:
 	    data = json.load(config_file)
 
 	if "etherscan_api_token" not in data.keys() or data['etherscan_api_token'] == "":
-		print("etherscan_api_token must be specified in config.json")
-		return 
+		raise Exception("etherscan_api_token must be specified in config.json")
+		  
 
 	key = data['etherscan_api_token']
 	stake_address = '0x370f4d7625c10499bbb9353f3e91f83a0b750bec'
@@ -49,4 +55,6 @@ def plot_staked(out_filename):
 	ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
 
 	fig.savefig(out_filename,dpi=200,bbox_inches="tight")
-	fig.close()
+	plt.close(fig)
+
+plot_staked("test_out")
