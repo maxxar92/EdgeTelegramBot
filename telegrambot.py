@@ -45,7 +45,8 @@ def help(update, context):
 Commands:
 /stargate <stargate> - Show hosts connected to this stargate.
 /added <days> - Show statistics added hosts in last <days>.
-/hosts - Show per-country statistics of current hosts.""", parse_mode=ParseMode.MARKDOWN)
+/hosts - Show per-country statistics of current hosts.
+/staked - Get the percentage of staked tokens from the total supply""", parse_mode=ParseMode.MARKDOWN)
    
 def sendMessage(text):
     bot.send_message(chat_id=chat_id, text=text, parse_mode=ParseMode.MARKDOWN)
