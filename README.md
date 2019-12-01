@@ -9,6 +9,7 @@ As the edge API for querying nodes isn't published yet, this bot scrapes the [ex
 - /stargate <3-letter stargate> - Displays all hosts connected to the queried stargate
 - /added \<days\> - Show statistics added hosts in last \<days\>.
 - /hosts - Show per-country statistics of current hosts
+- /staked - Get the percentage of staked tokens from the total supply
 - /register <10 number registry id> - Registers a device for [check-edge](https://github.com/befranz/check-edge) failure reports, check the link for setup guidelines.
 
 #### Notifications
