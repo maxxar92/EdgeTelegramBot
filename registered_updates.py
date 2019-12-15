@@ -7,6 +7,7 @@ from telegram import ParseMode
 import scrape_new_hosts as host_scraper
 import traceback
 import logging
+import json
 
 CLIENT_DB = "registeredClients.db"
 app = Flask(__name__)
@@ -56,7 +57,19 @@ def host_status(device_uuid):
     except Exception as e:
         logger.exception(e)
         return abort(500, traceback.format_exc())
-    
+
+
+@app.route('/api/allhosts', methods=['GET'])
+def host_list():
+    try:
+        hosts = host_scraper.read_hosts_from_db()
+        hosts = hosts[["device_id", "host_name", "stargate", "location"]]
+        hosts["countrycode"] = ["" if loc == "-" else loc.split(",")[1].strip() for loc in hosts.location]
+        hosts.set_index('device_id', inplace=True)
+        return jsonify(json.loads(hosts.to_json(orient='index')))
+    except Exception as e:
+        logger.exception(e)
+        return abort(500, traceback.format_exc())
 
 def flaskthread():
     app.run(host='0.0.0.0', port=5000, threaded=True)
