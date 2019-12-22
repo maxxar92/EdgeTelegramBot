@@ -232,10 +232,40 @@ def plot_country_stat(out_filename):
     fig.savefig(out_filename,dpi=200,bbox_inches="tight")
     plt.close(fig)
 
+def plot_city_ranking(out_filename):
+    hosts_df = host_scraper.read_hosts_from_db()
+    hosts_df_known_loc = hosts_df.loc[(hosts_df.location!="-")].copy()
+    country_counts = hosts_df_known_loc.groupby('location')["location"].count().sort_values(ascending=False)
+    country_counts = country_counts.head(25)
+
+    cell_text = []
+    for row in country_counts.iteritems():
+        cell_text.append(row)
+
+    fig, ax = plt.subplots(1,1, figsize=(3,5))
+    #ax.set_xlim(0,0.64)
+    ax.table(cellText=cell_text, loc='best', 
+        colWidths=[0.5,0.1], bbox=[-0.2, -0.2, 1.3, 1.0], 
+        cellLoc='left' , edges="open")
+    ax.axis('off')
+    plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
+    fig.tight_layout()
+    fig.savefig(out_filename,dpi=200,bbox_inches="tight")#, pad_inches=0.0)
+    plt.close(fig)
+
+    # hack: the table margins are always messy and there seems to be no way to crop 
+    # out the major whitespace, therefore do cropping on the saved image
+    image = plt.imread(out_filename)
+    h,w,c = image.shape
+    img_cropped = image[180:h, 10:w-20, :]
+    plt.imsave(out_filename, img_cropped)
+
+
 
 if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
     logger = logging.getLogger(__name__)
-    fill_location_lookup_db(logger)
+    #fill_location_lookup_db(logger)
+    plot_city_ranking("test_ranking.png")
