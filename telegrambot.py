@@ -65,6 +65,10 @@ def poll_explorer():
             logger.info(newHostMessage(row))
             sendMessage(newHostMessage(row))
 
+@tl.job(interval=timedelta(seconds=600))
+def poll_cmc():
+    staking.check_new_prices()
+
 
 def newHostMessage(host):
     # columns ["device_id", "host_name", "stargate", "location", "arch", "status"]
