@@ -236,7 +236,7 @@ def add_payout(update, context):
         return
 
     if len(context.args) == 1:
-         try:
+        try:
             payout = int(context.args[0].strip())
             if payout < 1:
                 update.message.reply_text("Error. Payout must be >= 0")
@@ -273,6 +273,7 @@ def main():
     dp.add_handler(CommandHandler("unregister", unregister_from_update))
     dp.add_handler(CommandHandler("staked", get_staked))
     dp.add_handler(CommandHandler("payouts", get_payouts))
+    dp.add_handler(CommandHandler("addpayout", add_payout))
 
     # log all errors
     dp.add_error_handler(error)
