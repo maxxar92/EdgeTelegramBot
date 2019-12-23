@@ -84,6 +84,7 @@ def load_from_cmc_json():
     cur = conn.cursor()
     with conn:
         df.to_sql(name='prices', con=conn, if_exists="replace")
+    conn.close()
 
 def get_prices():
     with open('config.json') as config_file:
@@ -122,19 +123,32 @@ def get_prices():
 
     return prices
 
+def add_payout(dadi):
+    with open('testdata/payouts.json', 'r') as payouts_file:
+        data = json.load(payouts_file)
+    data["payouts"].append(dadi)
+    with open("testdata/payouts.json", "w") as outfile:
+        json.dump(data, outfile, indent=4)
+
+
 def check_new_prices():
     conn = sqlite3.connect(PRICE_DB)
-    cur = conn.cursor()
     with conn:
         df = pd.read_sql('select * from prices', conn)
     lastrow = df.tail(1)
     if pd.to_datetime(lastrow["date"].iloc[0]).dayofyear < pd.to_datetime('today').tz_localize("UTC").dayofyear:
         new_price = get_prices()
         if new_price is not None:
-            df.loc[len(df)] = [pd.to_datetime('now').tz_localize("UTC"), new_price["BTC"], new_price["ETH"], new_price["USD"]]
-            with conn:
+            df.loc[len(df)] = [str(pd.to_datetime('today').tz_localize("UTC").round('1s')), new_price["BTC"], new_price["ETH"], new_price["USD"]]
+            print("appended row: ")
+            print(df.tail(1))
+            with sqlite3.connect(PRICE_DB) as conn:
                 df.to_sql(name='prices', con=conn, if_exists="replace")
-
+            
+            data = json.load(open("testdata/historical_prices_dadi.json", "r"),  object_pairs_hook=OrderedDict)
+            data["data"][str(pd.to_datetime('today').tz_localize("UTC").round('1s'))] = {  "BTC": [new_price["BTC"]], "ETH": [new_price["ETH"]], "USD": [new_price["USD"]] }
+            with open("testdata/historical_prices_dadi.json", "w") as outfile:
+                json.dump(data, outfile, indent=4)
 
 def plot_payouts(out_filename):
     with open('testdata/payouts.json') as payouts_file:
@@ -177,8 +191,4 @@ def plot_payouts(out_filename):
 
     fig.savefig(out_filename, dpi=200,bbox_inches="tight")
     plt.close(fig)
-
-plot_payouts("testplotpayouts.png")
-
-
 

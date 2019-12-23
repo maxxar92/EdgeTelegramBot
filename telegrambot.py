@@ -216,6 +216,40 @@ def get_staked(update, context):
 
     update.message.reply_photo(photo=open(stat_img_filename, 'rb'))
 
+@send_action(ChatAction.TYPING)
+def get_payouts(update, context):
+    try:
+        stat_img_filename = "payouts.png"
+        staking.plot_payouts(stat_img_filename)
+    except Exception as e:
+        logger.exception(e)
+        update.message.reply_text("An error occured: {}".format(e))
+        return
+
+    update.message.reply_photo(photo=open(stat_img_filename, 'rb'))
+
+def add_payout(update, context):
+    telegram_id = update.message.chat_id
+
+    if telegram_id != 399032132:
+        update.message.reply_text("Sorry bro, you don't have admin rights")
+        return
+
+    if len(context.args) == 1:
+         try:
+            payout = int(context.args[0].strip())
+            if payout < 1:
+                update.message.reply_text("Error. Payout must be >= 0")
+                return
+        except ValueError:
+            update.message.reply_text("Error. The payout supplied must be a integer number.")
+            return
+        staking.add_payout(payout)
+        stat_img_filename = "payouts.png"
+        staking.plot_payouts(stat_img_filename)
+        update.message.reply_photo(photo=open(stat_img_filename, 'rb'))
+    else:
+        update.message.reply_text("Not so fast! You must supply a payout.")
 
 
 def main():
@@ -238,6 +272,7 @@ def main():
     dp.add_handler(CommandHandler("register", register_for_update))
     dp.add_handler(CommandHandler("unregister", unregister_from_update))
     dp.add_handler(CommandHandler("staked", get_staked))
+    dp.add_handler(CommandHandler("payouts", get_payouts))
 
     # log all errors
     dp.add_error_handler(error)
