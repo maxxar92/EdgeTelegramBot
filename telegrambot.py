@@ -83,8 +83,8 @@ def newHostMessage(host):
 
 def get_stargate_hosts(update, context):
     if telegram_id == chat_id:
-        # do general stargate diagram + PM hint.
-        pass
+        update.message.reply_text("Only available in PM")
+        return
 
     if len(context.args) == 0:
          update.message.reply_text("Not so fast! You must supply a stargate code.")
@@ -107,6 +107,31 @@ def get_stargate_hosts(update, context):
 
         out="```Hosts connected to {}\n{}```".format(query_stargate, str(x))
         update.message.reply_text(out, parse_mode=ParseMode.MARKDOWN)
+
+def get_stargate_hosts_map(update, context):
+    if len(context.args) == 0:
+         update.message.reply_text("Not so fast! You must supply a stargate code.")
+         return
+
+    query_stargate = context.args[0]
+    query_stargate = query_stargate.strip()
+    logger.info('Stargate host request: %s', update.message.text)
+    
+    hosts_df = host_scraper.read_hosts_from_db()
+    connected_hosts = hosts_df.loc[hosts_df.stargate == query_stargate]
+    if connected_hosts.shape[0] == 0:
+        update.message.reply_text("Stargate {} doesn't exist, or has no connected hosts.".format(query_stargate))
+        return
+    try:
+        stat_img_filename = "stargate_hosts.png"
+        geo_stat.plot_stargate_hosts(stat_img_filename, logger, query_stargate)
+    except Exception as e:
+        logger.exception(e)
+        update.message.reply_text("An error occured: {}".format(e))
+        return
+
+    update.message.reply_photo(photo=open(stat_img_filename, 'rb'))
+
 
 def send_action(action):
     """Sends `action` while processing func command."""
@@ -270,7 +295,8 @@ def main():
     # on different commands - answer in Telegram
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("help", help))
-    dp.add_handler(CommandHandler("stargate", get_stargate_hosts))
+    dp.add_handler(CommandHandler("stargatelist", get_stargate_hosts))
+    dp.add_handler(CommandHandler("stargate", get_stargate_hosts_map))
     dp.add_handler(CommandHandler("added", get_added_stats))
     dp.add_handler(CommandHandler("hosts", get_host_stats))
     dp.add_handler(CommandHandler("cities", get_city_stats))

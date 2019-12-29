@@ -82,7 +82,6 @@ def cache_new_locations(new_hosts_df, logger):
     with conn:
         loc_df.to_sql(name='map_locations', con=conn, if_exists="append")
 
-
 def retrieve_cached_locations():
     conn, cur = host_scraper.get_db_conn()
     cached_locations = pd.read_sql('select * from map_locations', conn)
@@ -262,10 +261,79 @@ def plot_city_ranking(out_filename):
 
 
 
+def plot_stargate_hosts(out_filename, logger, stargate):
+    hosts_df = host_scraper.read_hosts_from_db()
+    hosts_df = hosts_df.loc[hosts_df.stargate == stargate]
+
+    stargates = host_scraper.read_stargates_from_db()
+    cache_new_locations(stargates, logger)
+
+    fig, ax_map = plt.subplots(1, 1, figsize=(16, 16))
+    ax_map.axis('off')
+    world = geopandas.read_file(geopandas.datasets.get_path('naturalearth_lowres'))
+    world  = world[(world.pop_est>0) & (world.name!="Antarctica")]
+    ax_map.set_aspect('equal')
+    loc_df = retrieve_cached_locations()
+    hosts_df_known_loc = hosts_df.loc[(hosts_df.location!="-") & 
+                                                  hosts_df.location.isin(loc_df.explorer_location) ]
+    # equal column names needed for pd.merge
+    df_renamed = hosts_df_known_loc.rename(columns={"location": "explorer_location"}) 
+    merged_df = pd.merge(df_renamed, loc_df, how='inner', on=['explorer_location'])
+
+    geo_df_data = pd.DataFrame(
+        {'City': [loc.split(",")[0] for loc in merged_df.explorer_location],
+         'Country': [loc.split(",")[-1] for loc in merged_df.retrieved_address],
+         'Latitude': merged_df.latitude,
+         'Longitude': merged_df.longitude
+    })
+
+
+    fetched_stargate = stargates[stargates.stargate_name == stargate]
+    all_geo_nodes = geo_df_data.copy()
+    plot_stargate = False
+    if len(fetched_stargate) > 0 and fetched_stargate.location.isin(loc_df.explorer_location).any():
+        fetched_stargate = fetched_stargate.rename(columns={"location": "explorer_location"}) 
+        merged_stargate_df = pd.merge(fetched_stargate, loc_df, how='inner', on=['explorer_location'])
+        city, country = merged_stargate_df.explorer_location[0].split(",")
+        # make sure the stargate is included in the bounds
+        all_geo_nodes.loc[len(all_geo_nodes.index)] = [city, country, merged_stargate_df.latitude[0],  merged_stargate_df.longitude[0]]
+        plot_stargate = True
+
+    # this gdf is only used for bounds calculation
+    total_gdf = geopandas.GeoDataFrame(all_geo_nodes, 
+            geometry=geopandas.points_from_xy(all_geo_nodes.Longitude, all_geo_nodes.Latitude))    
+    minx, miny, maxx, maxy = total_gdf.total_bounds
+    marginx, marginy = abs((maxx-minx)/20.0), abs((maxy-miny)/20.0)
+    ax_map.set_xlim(minx-marginx, maxx+marginx)
+    ax_map.set_ylim(miny-marginy, maxy+marginy)
+    world.plot(ax=ax_map, color="lightblue",edgecolor="#6ec4cc")
+
+
+    grouped_by_city = geo_df_data.groupby('City')#.filter(lambda x: len(x) == n)
+    for city, group in grouped_by_city:
+        gdf = geopandas.GeoDataFrame(group, 
+            geometry=geopandas.points_from_xy(group.Longitude, group.Latitude))    
+        gdf.plot(ax=ax_map, color='red',marker=".",markersize=120+60*len(group)+(200 if len(group) > 1 else 0),edgecolor="black")
+        if len(group)>1:
+            gdf.plot(ax=ax_map, color='black',marker="${}$".format(len(group)),markersize=50)
+
+    if plot_stargate:
+        gdf = geopandas.GeoDataFrame(merged_stargate_df, 
+            geometry=geopandas.points_from_xy(merged_stargate_df.longitude, merged_stargate_df.latitude))    
+        gdf.plot(ax=ax_map, color='lightgreen',marker=".",markersize=750,edgecolor="black")
+        gdf.plot(ax=ax_map, color='black',marker="${}$".format(stargate),markersize=80)
+
+
+    hosts_unknown_locs = hosts_df[~hosts_df.host_name.isin(hosts_df_known_loc.host_name)]
+    ax_map.set_title("Hosts connected to {} (+ {} {} hosts in unknown locations)".format(stargate, len(hosts_unknown_locs), stargate))
+    fig.savefig(out_filename, dpi=240,bbox_inches="tight")
+    plt.close(fig)
+
+
 if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
     logger = logging.getLogger(__name__)
     #fill_location_lookup_db(logger)
-    plot_city_ranking("test_ranking.png")
+    plot_stargate_hosts("test_stargatehosts.png", logger, "lax")

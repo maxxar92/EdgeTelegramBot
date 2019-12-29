@@ -22,7 +22,7 @@ failed_retries = {
 }
 
 def poll_new_hosts(logger):
-    from geo_stat import fill_location_lookup_db, cache_new_locations
+    from geo_stat import cache_new_locations
     if os.path.isfile(HOST_DB):
         try:
             hosts_df = scrape_hosts_table()
