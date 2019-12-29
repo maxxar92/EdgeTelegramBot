@@ -1,3 +1,4 @@
+import os
 from etherscan.accounts import Account
 import matplotlib.pyplot as plt
 import logging
@@ -8,14 +9,6 @@ import json
 import sqlite3
 import numpy as np
 from collections import OrderedDict
-
-
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
-
-logger = logging.getLogger(__name__)
-
-PRICE_DB = "dadi_historical_prices.db"
 
 def get_stakes():
     with open('config.json') as config_file:
@@ -80,11 +73,13 @@ def load_from_cmc_json():
     df = pd.DataFrame(data=rows, columns=columns)
     df.set_index('date', inplace=True)
 
-    conn = sqlite3.connect(PRICE_DB)
-    cur = conn.cursor()
-    with conn:
-        df.to_sql(name='prices', con=conn, if_exists="replace")
-    conn.close()
+    return df
+
+    # conn = sqlite3.connect(PRICE_DB)
+    # cur = conn.cursor()
+    # with conn:
+    #     df.to_sql(name='prices', con=conn, if_exists="replace")
+    # conn.close()
 
 def get_prices():
     with open('config.json') as config_file:
@@ -131,22 +126,15 @@ def add_payout(dadi):
         json.dump(data, outfile, indent=4)
 
 
-def check_new_prices():
-    conn = sqlite3.connect(PRICE_DB)
-    with conn:
-        df = pd.read_sql('select * from prices', conn)
-    lastrow = df.tail(1)
-    if pd.to_datetime(lastrow["date"].iloc[0]).dayofyear < pd.to_datetime('today').tz_localize("UTC").dayofyear:
+def check_new_prices(logger):
+    df = load_from_cmc_json()
+    if pd.to_datetime(lastrow.index[0]).dayofyear < pd.to_datetime('today').tz_localize("UTC").dayofyear:
         new_price = get_prices()
         if new_price is not None:
-            df.loc[len(df)] = [str(pd.to_datetime('today').tz_localize("UTC").round('1s')), new_price["BTC"], new_price["ETH"], new_price["USD"]]
-            print("appended row: ")
-            print(df.tail(1))
-            with sqlite3.connect(PRICE_DB) as conn:
-                df.to_sql(name='prices', con=conn, if_exists="replace")
-            
+            new_price_data = {  "BTC": [new_price["BTC"]], "ETH": [new_price["ETH"]], "USD": [new_price["USD"]] }
+            logger.info("polled new price: " + str(new_price_data))
             data = json.load(open("testdata/historical_prices_dadi.json", "r"),  object_pairs_hook=OrderedDict)
-            data["data"][str(pd.to_datetime('today').tz_localize("UTC").round('1s'))] = {  "BTC": [new_price["BTC"]], "ETH": [new_price["ETH"]], "USD": [new_price["USD"]] }
+            data["data"][str(pd.to_datetime('today').tz_localize("UTC").round('1s'))] = new_price_data
             with open("testdata/historical_prices_dadi.json", "w") as outfile:
                 json.dump(data, outfile, indent=4)
 
@@ -157,16 +145,11 @@ def plot_payouts(out_filename):
     payouts = data["payouts"]
     startmonth = pd.Timestamp(year=2019, month=4, day=1, hour=12)
 
-    conn = sqlite3.connect(PRICE_DB)
-    cur = conn.cursor()
-    with conn:
-        df = pd.read_sql('select * from prices', conn)
-
+    df = load_from_cmc_json()
     usd_payouts = []
-    df["datetime"] = df["date"].apply(lambda t: pd.to_datetime(t))
     cur_month = startmonth
     for payout in payouts:
-        prices = df[(df["datetime"].dt.year == cur_month.year) & (df["datetime"].dt.month == cur_month.month)]
+        prices = df[(df.index.year == cur_month.year) & (df.index.month == cur_month.month)]
         prices= prices["USD"]
         # usd_payout / dadiprice1 * 1/days + usd_payout / dadiprice2 * 1/days = totaldadi
         usd_payouts.append(payout * len(prices) / np.reciprocal(prices.to_numpy()).sum())
@@ -191,4 +174,3 @@ def plot_payouts(out_filename):
 
     fig.savefig(out_filename, dpi=200,bbox_inches="tight")
     plt.close(fig)
-

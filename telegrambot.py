@@ -65,9 +65,10 @@ def poll_explorer():
             logger.info(newHostMessage(row))
             sendMessage(newHostMessage(row))
 
-@tl.job(interval=timedelta(seconds=600))
+@tl.job(interval=timedelta(seconds=60*60*4))
 def poll_cmc():
-    staking.check_new_prices()
+    logger.info("polling_cmc")
+    staking.check_new_prices(logger)
 
 
 def newHostMessage(host):
@@ -81,6 +82,10 @@ def newHostMessage(host):
         return "Host *{host.host_name}* has joined the network from an unknown location and is connected to stargate *{host.stargate}*.".format(host=host)
 
 def get_stargate_hosts(update, context):
+    if telegram_id == chat_id:
+        # do general stargate diagram + PM hint.
+        pass
+
     if len(context.args) == 0:
          update.message.reply_text("Not so fast! You must supply a stargate code.")
          return

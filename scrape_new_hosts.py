@@ -16,15 +16,32 @@ s.mount('https://', HTTPAdapter(max_retries=0))
 
 HOST_DB = "hosts.db"
 
+failed_retries = {
+    "num": 0,
+    "log_after": 60  # log every 60 minutes for failed connections
+}
+
 def poll_new_hosts(logger):
     from geo_stat import fill_location_lookup_db, cache_new_locations
     if os.path.isfile(HOST_DB):
         try:
             hosts_df = scrape_hosts_table()
+            failed_retries["num"] = 0
+        except requests.exceptions.RequestException as e:
+            if failed_retries["num"] == 0:
+                logger.error("Error in poll_new_hosts.scrape_hosts_table:")
+                logger.exception(e)
+            elif failed_retries["num"] % failed_retries["log_after"] == 0:
+                logger.error("Polling explorer still failing after {} minutes with error: ".format(failed_retries["num"]))
+                logger.exception(e)
+                
+            failed_retries["num"] += 1
+            return
         except Exception as e:
             logger.error("Error in poll_new_hosts.scrape_hosts_table:")
             logger.exception(e)
             return
+
         new_hosts = get_new_hosts(hosts_df)
 
         if not new_hosts.empty:
