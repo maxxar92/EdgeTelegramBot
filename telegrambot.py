@@ -56,6 +56,17 @@ def error(update, context):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
 
+def send_action(action):
+    """Sends `action` while processing func command."""
+    def decorator(func):
+        @wraps(func)
+        def command_func(update, context, *args, **kwargs):
+            context.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=action)
+            return func(update, context,  *args, **kwargs)
+        return command_func
+    
+    return decorator
+
 @tl.job(interval=timedelta(seconds=60))
 def poll_explorer():
     new_hosts = host_scraper.poll_new_hosts(logger)
@@ -133,19 +144,6 @@ def get_stargate_hosts_map(update, context):
         return
 
     update.message.reply_photo(photo=open(stat_img_filename, 'rb'))
-
-
-def send_action(action):
-    """Sends `action` while processing func command."""
-
-    def decorator(func):
-        @wraps(func)
-        def command_func(update, context, *args, **kwargs):
-            context.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=action)
-            return func(update, context,  *args, **kwargs)
-        return command_func
-    
-    return decorator
     
 @send_action(ChatAction.TYPING)
 def get_added_stats(update, context):
