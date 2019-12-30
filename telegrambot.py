@@ -82,6 +82,7 @@ def newHostMessage(host):
         return "Host *{host.host_name}* has joined the network from an unknown location and is connected to stargate *{host.stargate}*.".format(host=host)
 
 def get_stargate_hosts(update, context):
+    telegram_id = update.message.chat_id
     if telegram_id == chat_id:
         update.message.reply_text("Only available in PM")
         return
@@ -108,6 +109,7 @@ def get_stargate_hosts(update, context):
         out="```Hosts connected to {}\n{}```".format(query_stargate, str(x))
         update.message.reply_text(out, parse_mode=ParseMode.MARKDOWN)
 
+@send_action(ChatAction.TYPING)
 def get_stargate_hosts_map(update, context):
     if len(context.args) == 0:
          update.message.reply_text("Not so fast! You must supply a stargate code.")
