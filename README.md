@@ -6,10 +6,12 @@ This is a Bot for informing the Edge Telegram Community about activities in the 
 As the edge API for querying nodes isn't published yet, this bot scrapes the [explorer](https://explorer.edge.network)  for changes periodically.
 
 #### Commands
-- /stargate <3-letter stargate> - Displays all hosts connected to the queried stargate
+- /stargate <3-letter stargate> - Displays all hosts connected to the queried stargate on a map
+- /stargatelist <3-letter stargate> - Displays all hosts connected to the queried stargate as a list
 - /added \<days\> - Show statistics added hosts in last \<days\>.
 - /hosts - Show per-country statistics of current hosts
 - /staked - Get the percentage of staked tokens from the total supply
+- /cities - Get the top 25 cities, ranked on host counts
 - /register <10 number registry id> - Registers a device for [check-edge](https://github.com/befranz/check-edge) failure reports, check the link for setup guidelines.
 
 #### Notifications
