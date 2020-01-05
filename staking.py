@@ -128,7 +128,8 @@ def add_payout(dadi):
 
 def check_new_prices(logger):
     df = load_from_cmc_json()
-    if pd.to_datetime(lastrow.index[0]).dayofyear < pd.to_datetime('today').tz_localize("UTC").dayofyear:
+    lastrow = df.tail(1)
+    if pd.to_datetime(lastrow.index[0]).year < pd.to_datetime('today').tz_localize("UTC").year or pd.to_datetime(lastrow.index[0]).dayofyear < pd.to_datetime('today').tz_localize("UTC").dayofyear:
         new_price = get_prices()
         if new_price is not None:
             new_price_data = {  "BTC": [new_price["BTC"]], "ETH": [new_price["ETH"]], "USD": [new_price["USD"]] }
