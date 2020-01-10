@@ -1,0 +1,6 @@
+{
+       "auth": "<Telegram Auth token>",
+       "chat_id": "<telegram chat id>",
+       "etherscan_api_token": "<etherscan token, optional, needed for staking commands>",
+       "coinmarketcap_api_token": "<cmc api token, optional, needed for payout commands>"
+}

@@ -63,10 +63,35 @@ def host_status(device_uuid):
 def host_list():
     try:
         hosts = host_scraper.read_hosts_from_db()
-        hosts = hosts[["device_id", "host_name", "stargate", "location"]]
-        hosts["countrycode"] = ["" if loc == "-" else loc.split(",")[1].strip() for loc in hosts.location]
+        hosts = hosts[["device_id", "host_name", "stargate", "location", "status"]]
+        hosts["countrycode"] = ["" if loc == "-" else loc.split(",")[-1].strip() for loc in hosts.location]
         hosts.set_index('device_id', inplace=True)
         return jsonify(json.loads(hosts.to_json(orient='index')))
+    except Exception as e:
+        logger.exception(e)
+        return abort(500, traceback.format_exc())
+
+@app.route('/api/gateways', methods=['GET'])
+def gateway_list():
+    try:
+        gateways = host_scraper.read_gateways_from_db()
+        gateways = gateways[["device_id", "stargate", "location", "arch", "status"]]
+        gateways["countrycode"] = ["" if loc == "-" else loc.split(",")[-1].strip() for loc in gateways.location]
+        gateways.set_index('device_id', inplace=True)
+        return jsonify(json.loads(gateways.to_json(orient='index')))
+    except Exception as e:
+        logger.exception(e)
+        return abort(500, traceback.format_exc())
+
+
+@app.route('/api/stargates', methods=['GET'])
+def stargate_list():
+    try:
+        stargates = host_scraper.read_stargates_from_db()
+        stargates = stargates[["device_id", "stargate_name", "location", "arch", "status"]]
+        stargates["countrycode"] = ["" if loc == "-" else loc.split(",")[1].strip() for loc in stargates.location]
+        stargates.set_index('device_id', inplace=True)
+        return jsonify(json.loads(stargates.to_json(orient='index')))
     except Exception as e:
         logger.exception(e)
         return abort(500, traceback.format_exc())
