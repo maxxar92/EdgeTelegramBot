@@ -282,6 +282,15 @@ def add_payout(update, context):
     else:
         update.message.reply_text("Not so fast! You must supply a payout.")
 
+def send_chat_message(update, context):
+    telegram_id = update.message.chat_id
+
+    if telegram_id != 399032132:
+        update.message.reply_text("Sorry bro, you don't have admin rights")
+
+    sendMessage(" ".join(context.args))
+
+
 
 def get_funny_quote(update, context):
     reply_msg = update.message.reply_to_message
@@ -313,6 +322,7 @@ def main():
     dp.add_handler(CommandHandler("staked", get_staked))
     dp.add_handler(CommandHandler("payouts", get_payouts))
     dp.add_handler(CommandHandler("addpayout", add_payout))
+    dp.add_handler(CommandHandler("sendmessage", send_chat_message))
 
 
     dp.add_handler(MessageHandler(Filters.reply, get_funny_quote))
