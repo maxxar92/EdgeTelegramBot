@@ -13,7 +13,7 @@ from registered_updates import user_updater
 from conversational import get_quote
 
 from telegram import Bot, Update, ParseMode, ChatAction
-from telegram.ext import  Dispatcher, Updater, CommandHandler
+from telegram.ext import  Dispatcher, Updater, CommandHandler, MessageHandler, Filters
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -294,7 +294,7 @@ def send_chat_message(update, context):
 
 def get_funny_quote(update, context):
     reply_msg = update.message.reply_to_message
-    if reply_msg.from.id == bot.get_me.id:
+    if reply_msg.from_user.id == bot.get_me().id:
         quote = get_quote()
         update.message.reply_text(quote)
 

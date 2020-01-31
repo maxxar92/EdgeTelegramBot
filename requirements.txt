@@ -11,3 +11,4 @@ descartes
 pillow
 flask
 py-etherscan-api
+mpld3
