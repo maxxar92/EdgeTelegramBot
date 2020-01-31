@@ -281,6 +281,15 @@ def add_payout(update, context):
     else:
         update.message.reply_text("Not so fast! You must supply a payout.")
 
+def send_chat_message(update, context):
+    telegram_id = update.message.chat_id
+
+    if telegram_id != 399032132:
+        update.message.reply_text("Sorry bro, you don't have admin rights")
+
+    sendMessage(" ".join(context.args))
+
+
 
 def main():
     """Run bot."""
@@ -305,6 +314,7 @@ def main():
     dp.add_handler(CommandHandler("staked", get_staked))
     dp.add_handler(CommandHandler("payouts", get_payouts))
     dp.add_handler(CommandHandler("addpayout", add_payout))
+    dp.add_handler(CommandHandler("sendmessage", send_chat_message))
 
     # log all errors
     dp.add_error_handler(error)
