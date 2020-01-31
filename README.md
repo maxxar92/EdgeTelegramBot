@@ -13,6 +13,7 @@ As the edge API for querying nodes isn't published yet, this bot scrapes the [ex
 - /staked - Get the percentage of staked tokens from the total supply
 - /cities - Get the top 25 cities, ranked on host counts
 - /register <10 number registry id> - Registers a device for [check-edge](https://github.com/befranz/check-edge) failure reports, check the link for setup guidelines.
+- /payouts - Show monthly payouts in usd and edge 
 
 #### Notifications
 When a new node first comes online, a notification will be sent to the registered channel (currently the trading channel)
