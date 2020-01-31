@@ -10,6 +10,7 @@ from prettytable import PrettyTable
 import staking
 import geo_stat
 from registered_updates import user_updater
+from conversational import get_quote
 
 from telegram import Bot, Update, ParseMode, ChatAction
 from telegram.ext import  Dispatcher, Updater, CommandHandler
@@ -282,6 +283,13 @@ def add_payout(update, context):
         update.message.reply_text("Not so fast! You must supply a payout.")
 
 
+def get_funny_quote(update, context):
+    reply_msg = update.message.reply_to_message
+    if reply_msg.from.id == bot.get_me.id:
+        quote = get_quote()
+        update.message.reply_text(quote)
+
+
 def main():
     """Run bot."""
     # Create the Updater and pass it your bot's token.
@@ -305,6 +313,9 @@ def main():
     dp.add_handler(CommandHandler("staked", get_staked))
     dp.add_handler(CommandHandler("payouts", get_payouts))
     dp.add_handler(CommandHandler("addpayout", add_payout))
+
+
+    dp.add_handler(MessageHandler(Filters.reply, get_funny_quote))
 
     # log all errors
     dp.add_error_handler(error)

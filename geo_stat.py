@@ -7,11 +7,27 @@ import geopandas
 import geopy
 from geopy.geocoders import Nominatim, MapBox
 from geopy.extra.rate_limiter import RateLimiter
+import json
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import scrape_new_hosts as host_scraper
 
+import mpld3
+#mpld3 hack
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return super(NumpyEncoder, self).default(obj)
+from mpld3 import _display
+_display.NumpyEncoder = NumpyEncoder
 
 plt.rcParams["font.size"] = 14
 
@@ -105,7 +121,7 @@ def offset_image(dt, ycoord, name, ax, yoffset=16):
 
     ax.add_artist(ab)
 
-def plot_geostat_update(out_filename, timespan):
+def plot_geostat_update(out_filename, timespan, save_as_html=False):
     hosts_df = host_scraper.read_hosts_from_db()
     hosts_df_timed = hosts_df[pd.notna(hosts_df["first_online_timestamp"])].copy() 
     hosts_df_timed["datetime"] = pd.to_datetime(hosts_df_timed.first_online_timestamp * 1e9)
@@ -136,6 +152,7 @@ def plot_geostat_update(out_filename, timespan):
          'Longitude': merged_df.longitude
     })
 
+
     for n in range(100):
         n_count_nodes = geo_df_data.groupby('City').filter(lambda x: len(x) == n)
         if not n_count_nodes.empty:    
@@ -146,12 +163,18 @@ def plot_geostat_update(out_filename, timespan):
                 # shift up marker slightly to align to center
                 gdf_shifted1 = geopandas.GeoDataFrame(n_count_nodes.copy(), 
                     geometry=geopandas.points_from_xy(n_count_nodes.Longitude, n_count_nodes.Latitude+1.9))
-                gdf_shifted1.plot(ax=ax_map, color='red',marker="v",markersize=60,edgecolor="black")
+                num_marker = mpl.markers.MarkerStyle(marker="${}$".format(n))
+                down_marker = mpl.markers.MarkerStyle(marker="v")
+                if save_as_html:
+                    # for some reason it needs to flipped if rendering to html
+                    num_marker._transform = num_marker.get_transform().scale(1,-1)
+                    down_marker._transform = down_marker.get_transform().scale(1,-1)
+                
+                gdf_shifted1.plot(ax=ax_map, color='red',marker=down_marker,markersize=60,edgecolor="black")
                 # plot number of nodes in this city
                 gdf_shifted2 = geopandas.GeoDataFrame(n_count_nodes.copy(), 
                     geometry=geopandas.points_from_xy(n_count_nodes.Longitude, n_count_nodes.Latitude+6.2))
-                gdf_shifted2.plot(ax=ax_map, color='black',marker="${}$".format(n),markersize=100)
-
+                gdf_shifted2.plot(ax=ax_map, color='black',marker=num_marker,markersize=100)
 
     hosts_unknown_locs = hosts_df_timed[~hosts_df_timed.host_name.isin(hosts_df_timed_known_loc.host_name)]
     if not hosts_unknown_locs.empty:
@@ -169,6 +192,7 @@ def plot_geostat_update(out_filename, timespan):
     counts.plot(ax=ax_linegraph,linestyle='--', marker='o',color="red",markersize=10)
 
     date_time_grouped = hosts_df_timed_known_loc.groupby([hosts_df_timed.datetime.dt.date])
+    offsets = []
     for dt in r:
         df = hosts_df_timed_known_loc.loc[hosts_df_timed.datetime.dt.date == dt.date()]
         country_coded_df = df.copy()
@@ -176,11 +200,36 @@ def plot_geostat_update(out_filename, timespan):
         unique_countries = country_coded_df.drop_duplicates(subset='countrycode', keep="first")["countrycode"]
         for i, country in enumerate(unique_countries.tolist()):
             offset = i*(max(counts)/10.0 + max(counts)/50.0)
-            if counts[dt] >= max(counts) * 0.75:
-                offset_image(dt, counts[dt]-offset, country, ax_linegraph,yoffset=-20)
+            if save_as_html:
+                offsets.append((dt, 
+                    counts[dt]-offset - 20 if counts[dt] >= max(counts) * 0.75 else counts[dt]+offset, 
+                    country))
             else:
-                offset_image(dt, counts[dt]+offset, country, ax_linegraph)
-    fig.savefig(out_filename, dpi=200,bbox_inches="tight")
+                if counts[dt] >= max(counts) * 0.75:
+                    offset_image(dt, counts[dt]-offset, country, ax_linegraph,yoffset=-20)
+                else:
+                    offset_image(dt, counts[dt]+offset, country, ax_linegraph)
+
+    if save_as_html:
+        mpld3.plugins.connect(fig, mpld3.plugins.Zoom())
+        grouped = geo_df_data.groupby('City')
+        points = []; cities = []
+        for city, data in grouped:
+            coord = (data.Longitude.tolist()[0], data.Latitude.tolist()[0])
+            points.append(coord); cities.append(city)
+        ## pseudo-transparent scatter
+        scatter = ax_map.scatter(list(zip(*points))[0], list(zip(*points))[1], s=40, alpha=.01, marker='s', edgecolor='none')
+        ## create the plugin
+        tooltip = mpld3.plugins.PointLabelTooltip(scatter, labels=cities)
+        mpld3.plugins.connect(fig, tooltip)
+
+        # add_html_images(offsets)
+        scatter = ax_linegraph.scatter(list(zip(*offsets))[0], list(zip(*offsets))[1], s=40, alpha=.01, marker='s', edgecolor='none')
+        mpld3.plugins.connect(fig, AddImage(scatter, None))
+
+        mpld3.save_html(fig, out_filename.split(".")[0] + ".html")
+    else:
+        fig.savefig(out_filename, dpi=200,bbox_inches="tight")
     plt.close(fig)
 
 def offset_image_barchart(coord, name, ax):
@@ -191,7 +240,43 @@ def offset_image_barchart(coord, name, ax):
                         xycoords='data',  boxcoords="offset points", pad=0)
     ax.add_artist(ab)
 
-def plot_country_stat(out_filename):
+class AddImage(mpld3.plugins.PluginBase):  # inherit from PluginBase
+    """Hello World plugin"""
+
+    JAVASCRIPT = """
+    mpld3.register_plugin("AddImage", AddImage);
+    AddImage.prototype = Object.create(mpld3.Plugin.prototype);
+    AddImage.prototype.constructor = AddImage;
+    function AddImage(fig, props){
+        mpld3.Plugin.call(this, fig, props);
+    };
+
+    AddImage.prototype.draw = function(){
+        var obj = mpld3.get_element(this.props.id);
+        obj.elements().map(function(node) {
+            console.log(node);
+            parent = d3.select(node.parentNode);
+            node.map(function(e) {
+                console.log(e);
+                var t = d3.transform(d3.select(e).attr("transform") ).translate;
+                console.log(t);
+                parent.append("text")
+                .text("hello world")
+                .style("font-size", 10)
+                .style("opacity", 0.8)
+                .style("text-anchor", "middle")
+                .attr("transform", "translate(" + t[0] + "," + t[1] + ")")
+             })
+        });
+    }
+    """
+    def __init__(self, points, images):
+        self.dict_ = {"type": "AddImage", "id": mpld3.utils.get_id(points)}
+
+def add_html_images(offsets, ax):
+    pass
+
+def plot_country_stat(out_filename, save_as_html=False):
     hosts_df = host_scraper.read_hosts_from_db()
     loc_df = retrieve_cached_locations()
     hosts_df_known_loc = hosts_df.loc[(hosts_df.location!="-")].copy()
@@ -228,10 +313,13 @@ def plot_country_stat(out_filename):
     ax_rest.set_xticklabels(labels)
     ax_rest.axvline(x=unknown_hosts_per_stargate.shape[0]-0.5,linestyle='dashed')
     ax_rest.text(0.5,max(merged_stats)/1.1, "Online hosts with unknown locations, per stargate",  fontsize=18)
-    fig.savefig(out_filename,dpi=200,bbox_inches="tight")
+    if save_as_html:
+        mpld3.save_html(fig, out_filename.split(".")[0] + ".html")
+    else:
+        fig.savefig(out_filename,dpi=200,bbox_inches="tight")
     plt.close(fig)
 
-def plot_city_ranking(out_filename):
+def plot_city_ranking(out_filename, save_as_html=False):
     hosts_df = host_scraper.read_hosts_from_db()
     hosts_df_known_loc = hosts_df.loc[(hosts_df.location!="-")].copy()
     country_counts = hosts_df_known_loc.groupby('location')["location"].count().sort_values(ascending=False)
@@ -249,6 +337,12 @@ def plot_city_ranking(out_filename):
     ax.axis('off')
     plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
     fig.tight_layout()
+    if save_as_html:
+        mpld3.save_html(fig, out_filename.split(".")[0] + ".html")
+        plt.close(fig)  
+        return
+
+
     fig.savefig(out_filename,dpi=200,bbox_inches="tight")#, pad_inches=0.0)
     plt.close(fig)
 
@@ -261,7 +355,7 @@ def plot_city_ranking(out_filename):
 
 
 
-def plot_stargate_hosts(out_filename, logger, stargate):
+def plot_stargate_hosts(out_filename, logger, stargate, save_as_html=False):
     hosts_df = host_scraper.read_hosts_from_db()
     hosts_df = hosts_df.loc[hosts_df.stargate == stargate]
 
@@ -326,7 +420,10 @@ def plot_stargate_hosts(out_filename, logger, stargate):
 
     hosts_unknown_locs = hosts_df[~hosts_df.host_name.isin(hosts_df_known_loc.host_name)]
     ax_map.set_title("Hosts connected to {} (+ {} {} hosts in unknown locations)".format(stargate, len(hosts_unknown_locs), stargate))
-    fig.savefig(out_filename, dpi=240,bbox_inches="tight")
+    if save_as_html:
+        mpld3.save_html(fig, out_filename.split(".")[0] + ".html")
+    else:
+        fig.savefig(out_filename, dpi=240,bbox_inches="tight")
     plt.close(fig)
 
 
@@ -336,4 +433,4 @@ if __name__ == '__main__':
 
     logger = logging.getLogger(__name__)
     #fill_location_lookup_db(logger)
-    plot_stargate_hosts("test_stargatehosts.png", logger, "lax")
+    plot_geostat_update("htmltest/test_geostat.png", timespan=60, save_as_html=True)
