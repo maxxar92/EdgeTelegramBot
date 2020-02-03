@@ -134,8 +134,8 @@ def plot_geostat_update(out_filename, timespan, save_as_html=False):
     hosts_df_timed = hosts_df_timed.loc[hosts_df_timed.datetime >= start_day]
 
     if save_as_html:
-        fig_map, ax_map = plt.subplots(1, 1,figsize=(16, 8))
-        fig_linegraph, ax_linegraph = plt.subplots(1, 1,figsize=(16, 4))
+        fig_map, ax_map = plt.subplots(1, 1,figsize=(12.8, 6.4))
+        fig_linegraph, ax_linegraph = plt.subplots(1, 1,figsize=(12.8, 3.2))
     else:
         fig, (ax_map,ax_linegraph) = plt.subplots(2, 1,figsize=(16, 16), gridspec_kw={'height_ratios': [6, 1],"hspace":-0.5})
 
@@ -220,7 +220,7 @@ def plot_geostat_update(out_filename, timespan, save_as_html=False):
         scatter = ax_map.scatter(list(zip(*points))[0], list(zip(*points))[1], s=40, alpha=.01, marker='s', edgecolor='none')
         tooltip = mpld3.plugins.PointLabelTooltip(scatter, labels=cities)
         mpld3.plugins.connect(fig_map, tooltip)
-        mpld3.save_html(fig_map, out_filename.split(".")[0] + ".html")
+        mpld3.save_html(fig_map, out_filename.split(".")[0] + ".html", figid="fig_added_world")
         plt.close(fig_map)
         
         #clear any plugins such as zoom
@@ -228,7 +228,7 @@ def plot_geostat_update(out_filename, timespan, save_as_html=False):
         ## pseudo-transparent scatter for flags
         scatter = ax_linegraph.scatter(list(zip(*offsets))[0], list(zip(*offsets))[1], s=40, alpha=.01, marker='s', edgecolor='none')
         mpld3.plugins.connect(fig_linegraph, AddImage(scatter, list(zip(*offsets))[2], list(zip(*offsets))[3]))
-        mpld3.save_html(fig_linegraph, out_filename.split(".")[0] + "_chart" + ".html")
+        mpld3.save_html(fig_linegraph, out_filename.split(".")[0] + "_chart" + ".html", figid="fig_added_chart", template_type='simple')
         plt.close(fig_linegraph)
 
     else:
@@ -302,6 +302,7 @@ class AddImage(mpld3.plugins.PluginBase):  # inherit from PluginBase
         self.dict_ = {"type": "AddImage", "id": mpld3.utils.get_id(points), 
                         "images": images, "downwards_flag": downwards_flag}
 
+
 def plot_country_stat(out_filename, save_as_html=False):
     hosts_df = host_scraper.read_hosts_from_db()
     loc_df = retrieve_cached_locations()
@@ -309,7 +310,7 @@ def plot_country_stat(out_filename, save_as_html=False):
     hosts_df_known_loc["countrycode"] = [loc.split(",")[1].strip() for loc in hosts_df_known_loc.location]
     country_counts = hosts_df_known_loc.groupby('countrycode')["countrycode"].count().sort_values(ascending=False)
         
-    fig, (ax, ax_rest) = plt.subplots(2,1, figsize=(16, 8), gridspec_kw={"hspace":0.3})
+    fig, (ax, ax_rest) = plt.subplots(2,1, figsize=(12.8, 6.4), gridspec_kw={"hspace":0.3})
     ax.bar(range(len(country_counts)), country_counts, width=0.8,align="center")
     ax.set_xticks(range(len(country_counts)))
     ax.set_xticklabels(country_counts.index)
@@ -351,7 +352,7 @@ def plot_country_stat(out_filename, save_as_html=False):
         x,y,imgs, downflag = list(zip(*offsets))
         scatter = ax.scatter(x,y, s=40, alpha=.01, marker='s', edgecolor='none')
         mpld3.plugins.connect(fig, AddImage(scatter, imgs, downflag))
-        mpld3.save_html(fig, out_filename.split(".")[0] + ".html")
+        mpld3.save_html(fig, out_filename.split(".")[0] + ".html",figid="fig_online_stats", template_type='simple')
     else:
         fig.savefig(out_filename,dpi=200,bbox_inches="tight")
     plt.close(fig)
@@ -375,7 +376,7 @@ def plot_city_ranking(out_filename, save_as_html=False):
     plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
     fig.tight_layout()
     if save_as_html:
-        mpld3.save_html(fig, out_filename.split(".")[0] + ".html")
+        mpld3.save_html(fig, out_filename.split(".")[0] + ".html", figid="fig_city_ranking", template_type='simple')
         plt.close(fig)  
         return
 
@@ -508,7 +509,7 @@ def plot_interactive_stargate_hosts(out_filename, logger):
     stargates = host_scraper.read_stargates_from_db()
     cache_new_locations(stargates, logger)
 
-    fig, ax_map = plt.subplots(1, 1, figsize=(16, 16))
+    fig, ax_map = plt.subplots(1, 1, figsize=(12.8, 12.8))
     ax_map.axis('off')
     world = geopandas.read_file(geopandas.datasets.get_path('naturalearth_lowres'))
     world  = world[(world.pop_est>0) & (world.name!="Antarctica")]
@@ -568,28 +569,16 @@ def plot_interactive_stargate_hosts(out_filename, logger):
     mpld3.plugins.connect(fig, tooltip)
 
 
-    mpld3.save_html(fig, out_filename.split(".")[0] + ".html")
+    mpld3.save_html(fig, out_filename.split(".")[0] + ".html", figid="fig_stargate_hosts", template_type='simple')
     plt.close(fig)
-
-def gen_all_html(logger=None):
-    if not logger:
-        logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
-        logger = logging.getLogger("html_generation")
-
-    plot_geostat_update("htmltest/geostat.html", timespan=60, save_as_html=True)
-    plot_city_ranking("htmltest/cityranking.html", save_as_html=True)
-    plot_country_stat("htmltest/onlinestats.html", save_as_html=True)
-    plot_interactive_stargate_hosts("htmltest/test_stargate_hosts.html", logger)
-    
 
 if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
     logger = logging.getLogger(__name__)
-    plot_country_stat("htmltest/onlinestats.html", save_as_html=True)
-    # gen_all_html(logger)
+    #plot_country_stat("htmltest/onlinestats.html", save_as_html=True)
+    #gen_all_plots_js(logger)
     #fill_location_lookup_db(logger)
     # plot_geostat_update("htmltest/test_geostat.png", timespan=60, save_as_html=True)
     # plot_interactive_stargate_hosts("htmltest/test_stargate_hosts.html", logger)

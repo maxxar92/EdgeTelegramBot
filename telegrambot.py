@@ -11,6 +11,7 @@ import staking
 import geo_stat
 from registered_updates import user_updater
 from conversational import get_quote
+from d3_plots_gen import gen_all_plots_js
 
 from telegram import Bot, Update, ParseMode, ChatAction
 from telegram.ext import  Dispatcher, Updater, CommandHandler, MessageHandler, Filters
@@ -81,6 +82,11 @@ def poll_explorer():
 def poll_cmc():
     logger.info("polling_cmc")
     staking.check_new_prices(logger)
+
+@tl.job(interval=timedelta(seconds=60*60))
+def gen_js_plots():
+    logger.info("generating js plots")
+    gen_all_plots_js(logger)
 
 
 def newHostMessage(host):

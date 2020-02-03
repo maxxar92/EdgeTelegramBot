@@ -10,6 +10,24 @@ import sqlite3
 import numpy as np
 from collections import OrderedDict
 
+
+import mpld3
+#mpld3 hack
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return super(NumpyEncoder, self).default(obj)
+from mpld3 import _display
+_display.NumpyEncoder = NumpyEncoder
+
+plt.rcParams["font.size"] = 14
+
 def get_stakes():
     with open('config.json') as config_file:
         data = json.load(config_file)
@@ -42,7 +60,7 @@ def get_stakes():
 
     return total_staked, hosts_staked, stargates_staked
 
-def plot_staked(out_filename):
+def plot_staked(out_filename, save_as_html=False):
     total_supply = 100e6
     total_staked, host_stake, stargate_stake = get_stakes()
 
@@ -51,12 +69,20 @@ def plot_staked(out_filename):
     sizes = [total_supply-total_staked, stargate_stake, host_stake]
     explode = (0, 0.1, 0.1) 
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(9, 6))
     ax.pie(sizes, explode=explode, labels=labels, autopct='%1.1f%%',
             shadow=False, startangle=0)
     ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
 
-    fig.savefig(out_filename,dpi=200,bbox_inches="tight")
+    if save_as_html:
+        #clear any plugins such as zoom
+        mpld3.plugins.clear(fig)
+        # scatter = ax.scatter(x,y, s=40, alpha=.01, marker='s', edgecolor='none')
+        mpld3.save_html(fig, out_filename.split(".")[0] + ".html",figid="fig_staked", template_type='simple')
+
+    else:
+        fig.savefig(out_filename,dpi=200,bbox_inches="tight")
+
     plt.close(fig)
 
 
@@ -74,12 +100,6 @@ def load_from_cmc_json():
     df.set_index('date', inplace=True)
 
     return df
-
-    # conn = sqlite3.connect(PRICE_DB)
-    # cur = conn.cursor()
-    # with conn:
-    #     df.to_sql(name='prices', con=conn, if_exists="replace")
-    # conn.close()
 
 def get_prices():
     with open('config.json') as config_file:
@@ -139,7 +159,7 @@ def check_new_prices(logger):
             with open("testdata/historical_prices_dadi.json", "w") as outfile:
                 json.dump(data, outfile, indent=4)
 
-def plot_payouts(out_filename):
+def plot_payouts(out_filename, save_as_html=False):
     with open('testdata/payouts.json') as payouts_file:
         data = json.load(payouts_file)
 
@@ -157,7 +177,7 @@ def plot_payouts(out_filename):
         cur_month = cur_month + pd.DateOffset(months=1)
 
     r = pd.date_range(start=startmonth.date(), periods=len(payouts), freq='MS')    
-    fig, ax_linegraph = plt.subplots(1, 1)
+    fig, ax_linegraph = plt.subplots(1, 1, figsize=(10, 6))
     ax_linegraph.set_title("Monthly payouts")
 
     color = "blue"
@@ -173,5 +193,12 @@ def plot_payouts(out_filename):
     dadi_series.plot(ax=dadi_ax, linestyle='--', marker='o',color=color,markersize=10)
     dadi_ax.tick_params(axis='y', labelcolor=color)
 
-    fig.savefig(out_filename, dpi=200,bbox_inches="tight")
+    if save_as_html:
+        #clear any plugins such as zoom
+        mpld3.plugins.clear(fig)
+        # scatter = ax.scatter(x,y, s=40, alpha=.01, marker='s', edgecolor='none')
+        mpld3.save_html(fig, out_filename.split(".")[0] + ".html",figid="fig_payouts", template_type='simple')
+
+    else:
+        fig.savefig(out_filename, dpi=200,bbox_inches="tight")
     plt.close(fig)
