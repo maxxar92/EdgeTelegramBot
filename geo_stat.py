@@ -188,15 +188,18 @@ def plot_geostat_update(out_filename, timespan, save_as_html=False):
     counts = counts.reindex(r).fillna(0.0) #fill dates without new hosts
     ax_linegraph.set_title("New hosts online - per day")
     ax_linegraph.set_ylabel("Hosts")
-    counts.plot(ax=ax_linegraph,linestyle='--', marker='o',color="red",markersize=10)
+    countplot = counts.plot(ax=ax_linegraph,linestyle='--', marker='o',color="red",markersize=10)
 
     date_time_grouped = hosts_df_timed_known_loc.groupby([hosts_df_timed.datetime.dt.date])
     offsets = []
+    dates_cities_map = []
     for dt in r:
         df = hosts_df_timed_known_loc.loc[hosts_df_timed.datetime.dt.date == dt.date()]
         country_coded_df = df.copy()
         country_coded_df["countrycode"] = [loc.split(",")[1].strip() for loc in df.location]
         unique_countries = country_coded_df.drop_duplicates(subset='countrycode', keep="first")["countrycode"]
+        dates_cities_map.append({city: len(city_df) for city, city_df in  df.groupby([df.location])})
+
         for i, country in enumerate(unique_countries.tolist()):
             offset = i*(max(counts)/10.0 + max(counts)/50.0)
             if save_as_html:
@@ -225,9 +228,40 @@ def plot_geostat_update(out_filename, timespan, save_as_html=False):
         
         #clear any plugins such as zoom
         mpld3.plugins.clear(fig_linegraph)
+        ax_linegraph.xaxis.set_major_locator(MaxNLocator(10))
         ## pseudo-transparent scatter for flags
-        scatter = ax_linegraph.scatter(list(zip(*offsets))[0], list(zip(*offsets))[1], s=40, alpha=.01, marker='s', edgecolor='none')
+        scatter = ax_linegraph.scatter(list(zip(*offsets))[0], list(zip(*offsets))[1], s=0.1, alpha=.01, marker='s', edgecolor='none')
         mpld3.plugins.connect(fig_linegraph, AddImage(scatter, list(zip(*offsets))[2], list(zip(*offsets))[3]))
+        
+        labels = []
+        for citycounts in dates_cities_map:
+            rows = ""
+            for city, count in citycounts.items():
+                rows += '<tr class="info"> <td>{}</td> <td>{}</td> </tr>'.format(str(city.split(",")[0]), str(count))
+            labels +=  [ '<div class="container"> <table  class="table" style="width:20%"><tbody> {} </tbody></table></div>'.format(rows) ] #[l[:-1]]
+
+        css = """ table {
+              font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+              border-collapse: collapse;
+              width: 100%;
+            }
+            td, th {
+              border: 1px solid #ddd;
+              padding: 8px;
+            }
+            tr {background-color: #f2f2f2;}
+            th {
+              padding-top: 12px;
+              padding-bottom: 12px;
+              text-align: left;
+              background-color: #4CAF50;
+              color: white;
+            } 
+        """    
+        ## pseudo-transparent scatter for flags
+        scatter = ax_linegraph.scatter(r, counts.tolist(), s=70, alpha=.01, marker='s', edgecolor='none', zorder = 4)
+        tooltip = mpld3.plugins.PointHTMLTooltip(scatter, labels=labels, css=css)
+        mpld3.plugins.connect(fig_linegraph, tooltip)
         mpld3.save_html(fig_linegraph, out_filename.split(".")[0] + "_chart" + ".html", figid="fig_added_chart", template_type='simple')
         plt.close(fig_linegraph)
 
@@ -555,7 +589,7 @@ def plot_interactive_stargate_hosts(out_filename, logger):
 
     handles, labels = ax_map.get_legend_handles_labels() # return lines and labels
     interactive_legend = mpld3.plugins.InteractiveLegendPlugin(handles,
-                                                         stargate_l,
+                                                         stargate_l, 
                                                          alpha_unsel=0.5,
                                                          alpha_over=1.5, 
                                                          start_visible=True)
@@ -580,5 +614,5 @@ if __name__ == '__main__':
     #plot_country_stat("htmltest/onlinestats.html", save_as_html=True)
     #gen_all_plots_js(logger)
     #fill_location_lookup_db(logger)
-    # plot_geostat_update("htmltest/test_geostat.png", timespan=60, save_as_html=True)
+    plot_geostat_update("htmltest/test_geostat.html", timespan=60, save_as_html=True)
     # plot_interactive_stargate_hosts("htmltest/test_stargate_hosts.html", logger)

@@ -21,6 +21,8 @@ def gen_all_plots_js(logger=None):
             with open(html_path.split(".")[0]+".js", "w") as f_out:
                 f_out.write(mpld_script.text)
 
+    if not os.path.exists("html_out"):
+         os.makedirs("html_out")
     geo_stat.plot_geostat_update("html_out/fig_geostat.html", timespan=60, save_as_html=True)
     geo_stat.plot_city_ranking("html_out/fig_cityranking.html", save_as_html=True)
     geo_stat.plot_country_stat("html_out/fig_onlinestats.html", save_as_html=True)

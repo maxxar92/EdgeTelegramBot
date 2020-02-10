@@ -83,7 +83,7 @@ def poll_cmc():
     logger.info("polling_cmc")
     staking.check_new_prices(logger)
 
-@tl.job(interval=timedelta(seconds=60*60))
+@tl.job(interval=timedelta(seconds=60*60 + 10))
 def gen_js_plots():
     logger.info("generating js plots")
     gen_all_plots_js(logger)

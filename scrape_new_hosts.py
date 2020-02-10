@@ -218,6 +218,6 @@ def clear_db():
     conn.commit()
 
 def get_db_conn():
-    conn = sqlite3.connect(HOST_DB)
+    conn = sqlite3.connect(HOST_DB, check_same_thread=False)
     cur = conn.cursor()
     return conn, cur
