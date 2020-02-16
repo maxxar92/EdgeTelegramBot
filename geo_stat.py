@@ -32,6 +32,9 @@ _display.NumpyEncoder = NumpyEncoder
 
 plt.rcParams["font.size"] = 14
 
+# if true, load image elements from edge cdn when serving charts as js/d3 
+USE_CDN = True
+
 # because the lat/long positions on the explorer are not known for individual hosts, we geocode (lookup) the lat/long position from the city/country
 def geocode_locations(locations, logger, use_mapbox=True):
     if use_mapbox:
@@ -126,7 +129,7 @@ def make_custom_marker(text, flip_y=False):
     return combined_marker
 
 
-def plot_geostat_update(out_filename, timespan, save_as_html=False):
+def plot_geostat_update(out_filename, timespan, save_as_html=False, d3_scale="xl"):
     hosts_df = host_scraper.read_hosts_from_db()
     hosts_df_timed = hosts_df[pd.notna(hosts_df["first_online_timestamp"])].copy() 
     hosts_df_timed["datetime"] = pd.to_datetime(hosts_df_timed.first_online_timestamp * 1e9)
@@ -134,8 +137,9 @@ def plot_geostat_update(out_filename, timespan, save_as_html=False):
     hosts_df_timed = hosts_df_timed.loc[hosts_df_timed.datetime >= start_day]
 
     if save_as_html:
-        fig_map, ax_map = plt.subplots(1, 1,figsize=(12.8, 6.4))
-        fig_linegraph, ax_linegraph = plt.subplots(1, 1,figsize=(12.8, 3.2))
+        scale = get_scale(d3_scale)
+        fig_map, ax_map = plt.subplots(1, 1,figsize=(scale, scale/2))
+        fig_linegraph, ax_linegraph = plt.subplots(1, 1,figsize=(scale, scale/4))
     else:
         fig, (ax_map,ax_linegraph) = plt.subplots(2, 1,figsize=(16, 16), gridspec_kw={'height_ratios': [6, 1],"hspace":-0.5})
 
@@ -262,7 +266,7 @@ def plot_geostat_update(out_filename, timespan, save_as_html=False):
         scatter = ax_linegraph.scatter(r, counts.tolist(), s=70, alpha=.01, marker='s', edgecolor='none', zorder = 4)
         tooltip = mpld3.plugins.PointHTMLTooltip(scatter, labels=labels, css=css)
         mpld3.plugins.connect(fig_linegraph, tooltip)
-        mpld3.save_html(fig_linegraph, out_filename.split(".")[0] + "_chart" + ".html", figid="fig_added_chart", template_type='simple')
+        mpld3.save_html(fig_linegraph, "_chart_".join(out_filename.rsplit("_", 1)), figid="fig_added_chart", template_type='simple')
         plt.close(fig_linegraph)
 
     else:
@@ -297,8 +301,7 @@ def offset_image_barchart(coord, name, ax):
 class AddImage(mpld3.plugins.PluginBase):  # inherit from PluginBase
     """Hello World plugin"""
 
-    JAVASCRIPT = """
-    mpld3.register_plugin("AddImage", AddImage);
+    JAVASCRIPT = """mpld3.register_plugin("AddImage", AddImage);
     AddImage.prototype = Object.create(mpld3.Plugin.prototype);
     AddImage.prototype.constructor = AddImage;
     AddImage.prototype.requiredProps = ["id", "images", "downwards_flag"];
@@ -311,11 +314,9 @@ class AddImage(mpld3.plugins.PluginBase):  # inherit from PluginBase
         var images = this.props.images;
         var downwards_flag = this.props.downwards_flag;
         obj.elements().map(function(node) {
-            console.log(node);
             parent = d3.select(node.parentNode);
             node.map(function(e, index) {
                 var img_name = images[index];
-                console.log("flags/" + img_name + ".png");
                 var t = d3.transform(d3.select(e).attr("transform") ).translate;
                 t[0] -= 10;
                 if (!downwards_flag[index]) 
@@ -327,24 +328,28 @@ class AddImage(mpld3.plugins.PluginBase):  # inherit from PluginBase
                 .attr("transform", "translate(" + t[0] + "," + t[1] + ")")
                 .attr('width', 20)
                 .attr('height', 20)
-                .attr("xlink:href",  "flags/" + img_name + ".png")
+                .attr("xlink:href",  "{host}" + img_name + ".png")
              })
         });
     }
-    """
+    """.replace("{host}", "flags/" if not USE_CDN else "https://cdn.edge-analytics.org/flags/")
     def __init__(self, points, images, downwards_flag):
         self.dict_ = {"type": "AddImage", "id": mpld3.utils.get_id(points), 
                         "images": images, "downwards_flag": downwards_flag}
 
 
-def plot_country_stat(out_filename, save_as_html=False):
+def plot_country_stat(out_filename, save_as_html=False, d3_scale="xl"):
     hosts_df = host_scraper.read_hosts_from_db()
     loc_df = retrieve_cached_locations()
     hosts_df_known_loc = hosts_df.loc[(hosts_df.location!="-")].copy()
     hosts_df_known_loc["countrycode"] = [loc.split(",")[1].strip() for loc in hosts_df_known_loc.location]
     country_counts = hosts_df_known_loc.groupby('countrycode')["countrycode"].count().sort_values(ascending=False)
+
+    figsize = (12.8, 6.4)
+    if save_as_html:
+        figsize = (get_scale(d3_scale), get_scale(d3_scale) / 2)
         
-    fig, (ax, ax_rest) = plt.subplots(2,1, figsize=(12.8, 6.4), gridspec_kw={"hspace":0.3})
+    fig, (ax, ax_rest) = plt.subplots(2,1, figsize=figsize, gridspec_kw={"hspace":0.3})
     ax.bar(range(len(country_counts)), country_counts, width=0.8,align="center")
     ax.set_xticks(range(len(country_counts)))
     ax.set_xticklabels(country_counts.index)
@@ -535,15 +540,32 @@ def mscatter(x,y,ax=None, m=None, **kw):
         sc.set_paths(paths)
     return sc
 
+def get_scale(scale):
+    # scale based on bootstrap grid system
+    if scale == "xl": #Extra Large (>=1200px)
+        figsize = 12.8
+    elif scale == "lg": #Large (>=992px)
+        figsize = 10.78
+    elif scale == "md": #Medium (>=768px)
+        figsize = 8.08
+    elif scale == "sm": #Small (>=576px)
+        figsize = 6.06
+    else:
+        print("scale {} not supported".format(scale))
+        return 12.8
 
-def plot_interactive_stargate_hosts(out_filename, logger):
+    return figsize
+
+def plot_interactive_stargate_hosts(out_filename, logger, d3_scale="xl"):
     from matplotlib.legend_handler import HandlerTuple
 
     hosts_df = host_scraper.read_hosts_from_db()
     stargates = host_scraper.read_stargates_from_db()
     cache_new_locations(stargates, logger)
 
-    fig, ax_map = plt.subplots(1, 1, figsize=(12.8, 12.8))
+    scale = get_scale(d3_scale)
+
+    fig, ax_map = plt.subplots(1, 1, figsize=(scale, scale))
     ax_map.axis('off')
     world = geopandas.read_file(geopandas.datasets.get_path('naturalearth_lowres'))
     world  = world[(world.pop_est>0) & (world.name!="Antarctica")]

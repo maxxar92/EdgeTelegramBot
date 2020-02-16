@@ -23,12 +23,14 @@ def gen_all_plots_js(logger=None):
 
     if not os.path.exists("html_out"):
          os.makedirs("html_out")
-    geo_stat.plot_geostat_update("html_out/fig_geostat.html", timespan=60, save_as_html=True)
     geo_stat.plot_city_ranking("html_out/fig_cityranking.html", save_as_html=True)
-    geo_stat.plot_country_stat("html_out/fig_onlinestats.html", save_as_html=True)
-    geo_stat.plot_interactive_stargate_hosts("html_out/fig_stargate_hosts.html", logger)
-    staking.plot_payouts("html_out/fig_payouts.html", save_as_html=True)
-    staking.plot_staked("html_out/fig_staked.html", save_as_html=True)
+
+    for sizeclass in ["xl", "lg", "md", "sm"]:
+        geo_stat.plot_interactive_stargate_hosts("html_out/fig_stargate_hosts_{}.html".format(sizeclass), logger, d3_scale=sizeclass)
+        geo_stat.plot_geostat_update("html_out/fig_geostat_{}.html".format(sizeclass), timespan=60, save_as_html=True, d3_scale=sizeclass)
+        geo_stat.plot_country_stat("html_out/fig_onlinestats_{}.html".format(sizeclass), save_as_html=True, d3_scale=sizeclass)
+        staking.plot_payouts("html_out/fig_payouts_{}.html".format(sizeclass), save_as_html=True, d3_scale=sizeclass)
+        staking.plot_staked("html_out/fig_staked_{}.html".format(sizeclass), save_as_html=True, d3_scale=sizeclass)
     
     for path in glob.glob("html_out/fig_*.html"):
         extract_js(path)

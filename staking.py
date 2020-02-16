@@ -1,6 +1,7 @@
 import os
 from etherscan.accounts import Account
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 import logging
 import pandas as pd
 from requests import Request, Session
@@ -60,7 +61,7 @@ def get_stakes():
 
     return total_staked, hosts_staked, stargates_staked
 
-def plot_staked(out_filename, save_as_html=False):
+def plot_staked(out_filename, save_as_html=False, d3_scale="xl"):
     total_supply = 100e6
     total_staked, host_stake, stargate_stake = get_stakes()
 
@@ -69,7 +70,11 @@ def plot_staked(out_filename, save_as_html=False):
     sizes = [total_supply-total_staked, stargate_stake, host_stake]
     explode = (0, 0.1, 0.1) 
 
-    fig, ax = plt.subplots(figsize=(9, 6))
+    figsize = (9,6)
+    if save_as_html:
+        figsize  = get_scaled(d3_scale, figsize)
+
+    fig, ax = plt.subplots(figsize=figsize)
     ax.pie(sizes, explode=explode, labels=labels, autopct='%1.1f%%',
             shadow=False, startangle=0)
     ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
@@ -159,7 +164,7 @@ def check_new_prices(logger):
             with open("testdata/historical_prices_dadi.json", "w") as outfile:
                 json.dump(data, outfile, indent=4)
 
-def plot_payouts(out_filename, save_as_html=False):
+def plot_payouts(out_filename, save_as_html=False, d3_scale="xl"):
     with open('testdata/payouts.json') as payouts_file:
         data = json.load(payouts_file)
 
@@ -177,7 +182,12 @@ def plot_payouts(out_filename, save_as_html=False):
         cur_month = cur_month + pd.DateOffset(months=1)
 
     r = pd.date_range(start=startmonth.date(), periods=len(payouts), freq='MS')    
-    fig, ax_linegraph = plt.subplots(1, 1, figsize=(10, 6))
+    
+    figsize = (10,6)
+    if save_as_html:
+        figsize  = get_scaled(d3_scale, figsize)
+
+    fig, ax_linegraph = plt.subplots(1, 1, figsize=figsize)
     ax_linegraph.set_title("Monthly payouts")
 
     color = "blue"
@@ -196,9 +206,27 @@ def plot_payouts(out_filename, save_as_html=False):
     if save_as_html:
         #clear any plugins such as zoom
         mpld3.plugins.clear(fig)
+        ax_linegraph.xaxis.set_major_locator(MaxNLocator(len(payouts)))
         # scatter = ax.scatter(x,y, s=40, alpha=.01, marker='s', edgecolor='none')
         mpld3.save_html(fig, out_filename.split(".")[0] + ".html",figid="fig_payouts", template_type='simple')
 
     else:
         fig.savefig(out_filename, dpi=200,bbox_inches="tight")
     plt.close(fig)
+
+
+def get_scaled(scale, orig_figsize):
+    # scale based on bootstrap grid system
+    if scale == "xl": #Extra Large (>=1200px)
+        figsize = 12.8
+    elif scale == "lg": #Large (>=992px)
+        figsize = 10.78
+    elif scale == "md": #Medium (>=768px)
+        figsize = 8.08
+    elif scale == "sm": #Small (>=576px)
+        figsize = 6.06
+    else:
+        print("scale {} not supported".format(scale))
+        return 12.8
+
+    return (orig_figsize[0] * (figsize / 12.8), orig_figsize[1] * (figsize / 12.8))
