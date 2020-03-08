@@ -300,9 +300,9 @@ def send_chat_message(update, context):
 
 def get_funny_quote(update, context):
     reply_msg = update.message.reply_to_message
-    if reply_msg.from_user.id == bot.get_me().id:
-        quote = get_quote()
-        update.message.reply_text(quote)
+    #if reply_msg.from_user.id == bot.get_me().id:
+    #    quote = get_quote()
+    #    update.message.reply_text(quote)
 
 
 def main():
