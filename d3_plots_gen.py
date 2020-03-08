@@ -4,6 +4,7 @@ import glob
 import logging
 import geo_stat
 import staking
+import warnings
 
 def gen_all_plots_js(logger=None):
     if not logger:
@@ -20,6 +21,9 @@ def gen_all_plots_js(logger=None):
 
             with open(html_path.split(".")[0]+".js", "w") as f_out:
                 f_out.write(mpld_script.text)
+
+    # don't print userwarning
+    warnings.filterwarnings("ignore", message="Blended transforms not yet supported")
 
     if not os.path.exists("html_out"):
          os.makedirs("html_out")

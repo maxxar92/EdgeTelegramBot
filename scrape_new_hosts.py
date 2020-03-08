@@ -88,7 +88,7 @@ def poll_new_hosts(logger):
 def scrape_hosts_table(update_stargates=True):
     url = 'https://explorer.edge.network/'
     response = get(url)
-    html_soup = BeautifulSoup(response.text, 'html.parser')
+    html_soup = BeautifulSoup(response.content.decode('utf-8', 'ignore'), 'html.parser')
 
     if update_stargates:
         update_stargate_info(html_soup)
@@ -221,3 +221,7 @@ def get_db_conn():
     conn = sqlite3.connect(HOST_DB, check_same_thread=False)
     cur = conn.cursor()
     return conn, cur
+
+
+if __name__ == '__main__':
+    scrape_hosts_table()
